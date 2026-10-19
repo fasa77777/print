@@ -100,11 +100,22 @@
 
 | 파일 | 내용 |
 |---|---|
-| `src/main/resources/application.properties` | 포트(8090), 로그 레벨, Spring DataSource (값은 아래 파일·환경변수에서 읽음) |
+| `src/main/resources/application.properties` | 포트(8090), 로그 레벨 |
 | `src/main/resources/db.properties` | **DB 주소·아이디·비밀번호. Git 에 올리지 않음.** `db.properties.example` 을 복사해서 만든다 |
 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 `db.properties` 보다 우선 |
 
-DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션은 `DBCPConnectionMgr`(commons-dbcp 풀, 이름 `ora10g2`)가 만들고, 각 `*SQL` 클래스가 `ConnectionPool.getInst().getConnection()` 으로 빌려 씁니다.
+DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션은 `DBCPConnectionMgr`(commons-dbcp 풀, 이름 `jetwork`)가 만들고, 각 `*SQL` 클래스가 `ConnectionPool.getInst().getConnection()` 으로 빌려 씁니다. Spring Boot 의 DataSource 자동 설정은 쓰지 않아서 꺼 두었습니다.
+
+커넥션 풀 설정 (`DBCPConnectionMgr` 상단 상수)
+
+| 설정 | 값 | 의미 |
+|---|---|---|
+| 최대 커넥션 | 50 | 동시에 빌릴 수 있는 최대 개수 |
+| 최대 유휴 커넥션 | 10 | 쉬는 커넥션을 남겨 두는 최대 개수 |
+| 대기 시간 | 10초 | 풀이 가득 찼을 때 기다리는 시간. 넘으면 커넥션 없음(null) → 결제는 FAIL/error 응답 |
+| 검증 쿼리 | `SELECT 1` | 빌려주기 전과 쉬는 동안 커넥션이 살아 있는지 확인 |
+| 유휴 정리 | 1분마다 점검, 3분 이상 쉰 커넥션 닫기 | 방화벽이 끊은 커넥션을 미리 정리 |
+| 접속·응답 타임아웃 | `loginTimeout=10`, `socketTimeout=60000` | DB URL 에 값이 없을 때 자동으로 붙임 |
 
 중계 서버 주소는 `co.kr.json.JsonHttpClient.BASE_URL` 에 있습니다.
 
@@ -120,6 +131,12 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 동시 결제 시 이중 사용 | 잔액 확인과 차감을 `UPDATE ... WHERE cyberMoney >= 금액` 한 번으로 처리한다 |
 | DB 오류·금액 형식 오류 시 500 에러 | ERROR 상태로 `FAIL` 응답하고, 트랜잭션을 롤백한다 |
 | 미등록 단말기도 OK | `/postTerminal` 은 `jw_terminal` 에 단말기 ID 와 시리얼이 함께 등록된 경우만 `OK`, 아니면 `FALSE`, DB 오류면 `ERROR` 로 응답하고 경고 로그를 남긴다 |
+| 서버 시작 직후 DB 요청 실패 | 웹 서버가 먼저 뜨고 커넥션 풀은 그 뒤에 만들어져, 그 사이 들어온 요청은 NullPointerException 이 났다. 이제 풀을 처음 쓸 때 만든다 |
+| 끊긴 커넥션 재사용 | DB 재시작이나 네트워크 끊김 후에도 죽은 커넥션을 계속 빌려줬다. 이제 `SELECT 1` 로 확인 후 빌려준다 |
+| 커넥션 고갈 시 무한 대기 | 풀이 가득 차면 요청이 끝없이 기다렸다. 이제 10초 후 실패 처리한다 |
+| 커넥션 풀 최대값 20000 | 50 으로 줄였다 |
+| 쓰지 않는 Spring 커넥션 풀 | 아무도 쓰지 않는 Spring DataSource(Hikari)가 같은 DB 에 따로 접속했다. 자동 설정을 껐다 |
+| DB 설정 누락 시 원인 불명 | 풀 생성 실패와 커넥션 실패 이유를 `[DB]` 로그로 남긴다 |
 | Xerox 결제 무한 대기 | 결과를 최대 120초 기다리고, 넘으면 `NO` 로 응답한다. 요청 전에 이전 결과를 초기화하고, 단말기 소켓을 닫는다 |
 | 카드번호 로그 노출 | 카드번호는 `Mask.card()` 로 가려서 출력하고, SQL 문과 요청 본문은 더 이상 출력하지 않는다 |
 | 커넥션·Statement 누수 | 모든 SQL 클래스가 try-with-resources 로 자원을 닫고 커넥션을 반납한다 |
@@ -133,6 +150,5 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 3. **사이버머니 결제번호 중복 확인 꺼짐**: `/postCyberMoneyPayment` 는 기존 코드에서 결제번호(`cyberNo`) 중복 확인이 꺼져 있어 그대로 두었다. 같은 요청이 두 번 오면 두 번 차감된다. (교세라 쪽은 켜져 있음)
 4. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
 5. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
-6. 커넥션 풀 최대값이 20000으로 너무 크다.
-7. `System.out.println` 과 `logger` 가 섞여 있다.
-8. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+6. `System.out.println` 과 `logger` 가 섞여 있다.
+7. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.

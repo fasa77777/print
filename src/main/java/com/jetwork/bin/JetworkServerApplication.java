@@ -5,7 +5,7 @@ import java.sql.SQLException;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 import com.jetwork.sql.DBCPConnectionMgr;
 import com.stech.Network.SocketServerDriver;
@@ -18,9 +18,11 @@ import com.stech.Network.SocketServerDriver;
  * 3. 결제 단말기와 통신하는 소켓 서버(포트 10020)를 별도 스레드로 띄운다.
  *
  * 컨트롤러는 이 클래스와 같은 패키지(com.jetwork.bin) 아래에 있어야 Spring 이 찾는다.
+ *
+ * DB 는 DBCPConnectionMgr 커넥션 풀만 쓴다. Spring 이 따로 만드는 DataSource(Hikari 풀)는
+ * 아무도 쓰지 않으면서 DB 커넥션만 차지하므로 끈다.
  */
-@SpringBootApplication
-@PropertySource(value = "classpath:db.properties", ignoreResourceNotFound = true)
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
 public class JetworkServerApplication {
 
 	// ---------------------------------------------------------------
