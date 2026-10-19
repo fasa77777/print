@@ -35,6 +35,8 @@ public class SocketServerDriver  implements Runnable {
             while (true) {
             	try {
             		 socket = serverSocket.accept();
+            		 // 단말기가 접속만 하고 데이터를 보내지 않으면 다른 단말기까지 모두 막히므로, 10초 안에 안 오면 끊는다.
+            		 socket.setSoTimeout(10000);
                      System.out.println("New Terminal connected  10020");
                      InputStream is = socket.getInputStream();
 

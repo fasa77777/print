@@ -26,10 +26,7 @@ public class DBCPConnectionMgr {
 	private static final String POOL_URL = "jdbc:apache:commons:dbcp:" + POOL_NAME;
 
 	// ---- 풀 설정 ----
-	/** 동시에 쓸 수 있는 최대 커넥션 수 (예전 값 20000 은 DB 서버가 감당할 수 없는 수였다) */
-	private static final int MAX_ACTIVE = 50;
-	/** 쉬고 있는 커넥션을 최대 몇 개까지 남겨 둘지 */
-	private static final int MAX_IDLE = 10;
+	// 최대 커넥션 수와 유휴 커넥션 수는 DbConfig (db.properties 의 db.pool.maxActive / db.pool.maxIdle, 기본 100 / 20)
 	/** 커넥션이 모두 사용 중일 때 기다리는 최대 시간. 넘으면 오류 (예전에는 무한 대기) */
 	private static final long MAX_WAIT_MILLIS = 10000;
 	/** 빌려주기 전에 살아 있는지 확인하는 쿼리 (DB 재시작·네트워크 끊김 후 죽은 커넥션 재사용 방지) */
@@ -90,8 +87,8 @@ public class DBCPConnectionMgr {
 		Class.forName(jdbcDriver);
 
 		GenericObjectPool connectionPool = new GenericObjectPool(null);
-		connectionPool.setMaxActive(MAX_ACTIVE);
-		connectionPool.setMaxIdle(MAX_IDLE);
+		connectionPool.setMaxActive(DbConfig.getPoolMaxActive());
+		connectionPool.setMaxIdle(DbConfig.getPoolMaxIdle());
 		connectionPool.setWhenExhaustedAction(GenericObjectPool.WHEN_EXHAUSTED_BLOCK);
 		connectionPool.setMaxWait(MAX_WAIT_MILLIS);
 		connectionPool.setTestOnBorrow(true);
@@ -109,7 +106,7 @@ public class DBCPConnectionMgr {
 
 		PoolingDriver driver = new PoolingDriver();
 		driver.registerPool(POOL_NAME, connectionPool);
-		System.out.println("[DB] 커넥션 풀 등록 완료 (최대 " + MAX_ACTIVE + "개)");
+		System.out.println("[DB] 커넥션 풀 등록 완료 (최대 " + DbConfig.getPoolMaxActive() + "개, 유휴 " + DbConfig.getPoolMaxIdle() + "개)");
 	}
 
 	/** URL 에 loginTimeout / socketTimeout 이 없으면 기본값을 붙인다. */

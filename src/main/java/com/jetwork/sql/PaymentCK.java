@@ -22,15 +22,16 @@ public class PaymentCK {
 		boolean notExists = true;
 		try {
 			notExists = !CardPaymentLedger.existsToday(conn, paymentOK);
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			dbcp.freeConnection(conn);
+		}
+		// 기다리는 동안 커넥션을 붙잡고 있지 않도록, 반납한 뒤에 기다린다.
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 		return notExists;
 	}
