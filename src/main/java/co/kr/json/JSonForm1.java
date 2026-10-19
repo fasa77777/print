@@ -4,6 +4,9 @@ import org.json.simple.JSONObject;
 
 
 
+/**
+ * 가격 정책 요청(단말기 작업 코드 02)을 중계 서버의 /printnuri/pricepolicy 로 보낸다.
+ */
 public class JSonForm1 {
 	public void setPolicyJson(String terminalID) {
 		

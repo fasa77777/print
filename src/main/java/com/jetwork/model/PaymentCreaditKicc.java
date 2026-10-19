@@ -2,6 +2,9 @@ package com.jetwork.model;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
 //신용거래
+/**
+ * KICC 단말기 카드 결제 기록 요청 (/printnuri/kicc/postCraditPayment).
+ */
 public class PaymentCreaditKicc {
 	/**
 	  {"R09":"99230915    ",
@@ -12,26 +15,38 @@ public class PaymentCreaditKicc {
 	 */
 
 		String R09; //승인번호
+		/** 체크카드 여부 (Y = 체크카드, 그 외 = 신용카드) */
 		String R10; 
 
+		/** 발급사 코드 (CardCompanyName 으로 카드사명 변환) */
 		String R12;
 		String R13; //발급사명
 
 		String R33; //TM : 티머니, EB : 캐시비 구분
 
 
+		/** 컬러 여부 */
 		String color;
+		/** 부수 */
 		String copies;
+		/** 양면 여부 */
 		String duplex;
+		/** 작업 종류 (print, copy 등) */
 		String jobType;
 
+		/** 모아찍기 수 */
 		String nUp;
+		/** 용지 크기 */
 		String paperSize;
+		/** 스캔 매수 */
 		String scanCount;
 
+		/** 단말기 ID */
 		String terminalID;
 
+		/** 결제 금액 */
 		String totalAmount;
+		/** 총 매수 */
 		String totalPages;
 		
 		
