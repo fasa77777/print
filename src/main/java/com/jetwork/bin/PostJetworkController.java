@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.jetwork.model.A4Terminal;
 import com.jetwork.model.CyberMoney;
 import com.jetwork.model.PayRresult;
-import com.jetwork.model.Paymant;
 import com.jetwork.model.PaymentCreaditKicc;
 import com.jetwork.model.PaymentKicc;
 import com.jetwork.model.PaymentKyocera;

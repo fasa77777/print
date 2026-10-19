@@ -29,3 +29,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### 비밀 정보 (GitHub 에 올리지 않음) ###
+db.properties
+!db.properties.example
+
+### Eclipse 빌드 결과물 ###
+/bin/

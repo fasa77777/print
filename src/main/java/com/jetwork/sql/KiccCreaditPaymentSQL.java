@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.bin.ConnectionSQL;
 import com.jetwork.model.CardCompanyName;
 import com.jetwork.model.PaymentCreaditKicc;
 import com.jetwork.model.PaymentKicc;
