@@ -1,98 +1,51 @@
 package com.jetwork.sql;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
 
+/** 사이버머니 잔액 조회 (/printnuri/postCyberMoney). 처음 보는 카드는 0원으로 등록한다. */
 public class UserCyberMoneySQL {
-	private Connection conn;
-	private Statement stmt;
-	private ResultSet rs;
-	private boolean userFlag = true;
-	
-	public String getUser(String terminalID,String userID) {
-		String money = "";
-		
+
+	/**
+	 * @param terminalID 가맹점을 찾을 단말기 ID (컨트롤러는 요청의 userID 를 넘긴다)
+	 * @param card       카드번호
+	 * @return 잔액 문자열. 새로 등록했으면 "0", 오류면 빈 문자열
+	 */
+	public String getUser(String terminalID, String card) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		 conn  = dbcp.getConnection();
-		
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return "";
+		}
 		try {
 			conn.setAutoCommit(false);
-			
-			
-			String stringSQL =" SELECT * FROM [dbo].[cybermoney] WHERE [cardNumber] = '"+userID+"'";
-			System.out.println(stringSQL);
-			stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			rs = stmt.executeQuery(stringSQL);
-			int i = 1;
-			while(rs.next()){
-				//money = rs.getString(2);
-				money = rs.getString("cyberMoney");
-				System.out.println("money ====="+money);
-				System.out.println("getString ====="+rs.getString(i));
-				userFlag = false;
-				i++;
-			}
-			
-			if(userFlag){
-				
-				stringSQL =" SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = '"+terminalID+"'";
-				System.out.println(stringSQL);
-				stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-				rs = stmt.executeQuery(stringSQL);
-				String franID = "";
-				while(rs.next()){
-					
-					System.out.println(rs.getString(3));
-					franID =rs.getString(3);
+
+			String money = null;
+			try (PreparedStatement ps = conn.prepareStatement(
+					"SELECT cyberMoney FROM [dbo].[cybermoney] WHERE [cardNumber] = ?")) {
+				ps.setString(1, card);
+				try (ResultSet rs = ps.executeQuery()) {
+					while (rs.next()) {
+						money = rs.getString("cyberMoney");
+					}
 				}
-				
-				System.out.println(franID);
-				
-				String insertSQL = "INSERT INTO [dbo].[cybermoney] ([cardNumber],[cyberMoney],[fran_id],[reg_date]) VALUES " +
-						" ('"+userID+"',0,'"+franID+"',getdate());";
-				
-				//System.out.println(insertSQL);
-				stmt.executeUpdate(insertSQL);		
-				
+			}
+
+			if (money == null) {
+				CyberMoneyLedger.registerCard(conn, card, terminalID);
 				money = "0";
 			}
-			
 			conn.commit();
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+			return money;
+		} catch (Exception e) {
 			e.printStackTrace();
-		
-		}finally{
-			//this.freeConn();
-			dbcp.freeConnection(conn, stmt, rs);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return "";
+		} finally {
+			dbcp.freeConnection(conn);
 		}
-		
-		
-		return money;
 	}
-	
-	
-	public void freeConn(){
-		try {
-			if(stmt != null){
-				stmt.close();
-			}
-			if(rs != null){
-				rs.close();
-			}
-		
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		//dm.freeConnection("mssql", conn);
-	}
-	
 }

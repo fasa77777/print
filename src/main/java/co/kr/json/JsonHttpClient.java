@@ -25,7 +25,7 @@ public final class JsonHttpClient {
 	 * HTTP 200 이 아니면 응답 메시지를 출력하고 빈 문자열을 돌려준다.
 	 */
 	public static String post(String url, JSONObject body) throws Exception {
-		System.out.println("POST " + url + " " + body);
+		System.out.println("POST " + url);
 
 		HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
 		con.setDoOutput(true);

@@ -210,7 +210,7 @@ public class SocketServerDriver  implements Runnable {
          	            	//stBuffer.append(Bytes.toHexString(b_command6[i]));
          	            	stBuffer.append(HexUtils.toHexString(b_command7[i]));
          	            }
-         	            System.out.println("ISO-8859-1 -> EUC-KR        : " +stBuffer.toString());
+         	            System.out.println("사이버머니 카드 : " + co.kr.up.util.Mask.card(stBuffer.toString()));
          	            
          	            JSonForm2 jf = new JSonForm2();
          				jf.setPaymentJson(stBuffer.toString());

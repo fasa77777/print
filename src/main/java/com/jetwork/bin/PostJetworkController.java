@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jetwork.model.A4Terminal;
 import com.jetwork.model.CyberMoney;
+import com.jetwork.model.CyberMoneyResult;
 import com.jetwork.model.PayRresult;
 import com.jetwork.model.PaymentCreaditKicc;
 import com.jetwork.model.PaymentKicc;
@@ -40,6 +41,8 @@ import com.jetwork.sql.PrintNuriCreaditPaymentSQL;
 import com.jetwork.sql.PrinterSQL;
 import com.jetwork.sql.TerminalInfoSQL;
 import com.jetwork.sql.UserCyberMoneySQL;
+
+import co.kr.up.util.Mask;
 
 @RestController
 
@@ -94,7 +97,7 @@ public class PostJetworkController {
     @RequestMapping(method = RequestMethod.POST, path = "/postCyberMoney" ,consumes = "application/json")
     public CyberMoney postRequest1(@RequestBody CyberMoney cyber){
     	logger.info(cyber.getUserID());
-    	logger.info(cyber.getUserCard());
+    	logger.info(Mask.card(cyber.getUserCard()));
     	//현석이 테스트용 주석처리
     	//cyber머니 DB조회
     	UserCyberMoneySQL uc = new UserCyberMoneySQL();
@@ -112,52 +115,14 @@ public class PostJetworkController {
     
     @RequestMapping(method = RequestMethod.POST, path = "/postCyberMoneyPayment" ,consumes = "application/json")
     public PaymentResult postRequest2(@RequestBody PaymentKicc payment){
-    	logger.info("CyberMoney");
-    	logger.info(payment.getUserCard());
-    	
-    	//현석이 테스트용 주석처리
-    	//cyber머니 과금 처리
-    	CyberMoneyPaymentSQL cmps = new CyberMoneyPaymentSQL();
-    	String money = cmps.setPayment(payment);
-    	//
-    	PaymentResult pr = new PaymentResult();
-    	
-    	System.out.println("money === "+money);
-     	System.out.println("\"0\".equals(money) === "+"0".equals(money));
-     	
-     	int i = Integer.parseInt(money);
-     	
-    	if("0".equals(money)) {    	  
-        	pr.setTerminalID(payment.getTerminalID());
-        	pr.setResult("FAIL");
-        	pr.setText("등록되지않은 카드입니다.");
-        	pr.setReason("no card");
-        	pr.setBalance(0);
+    	logger.info("CyberMoney card=" + Mask.card(payment.getUserCard()) + " amount=" + payment.getTotalAmount());
 
-    	}else if(i < 0){
-        	pr.setTerminalID(payment.getTerminalID());
-        	pr.setResult("FAIL");
-        	pr.setText("잔액부족 충전후 사용하세요");
-        	pr.setReason("no money");
-        	pr.setBalance(i);
-    	}
-    	
-    	else {
-        	pr.setTerminalID(payment.getTerminalID());
-        	pr.setResult("OK");
-        	pr.setText("정상결제 되었습니다.");
-        	pr.setReason("ok");
-        	pr.setBalance(i);
-    	}
-    	//PaymentResult pr = new PaymentResult();
-    	pr.setTerminalID(payment.getTerminalID());
-    	pr.setResult("OK");
-    	pr.setText("정상결제 되었습니다.");
-    	pr.setReason("ok");
-    	
-    	
-    	
-        return pr;
+    	// 사이버머니 차감. 잔액 부족·미등록 카드·오류는 FAIL 로 응답한다.
+    	CyberMoneyPaymentSQL cmps = new CyberMoneyPaymentSQL();
+    	CyberMoneyResult result = cmps.setPayment(payment);
+    	logger.info("CyberMoney result=" + result.getStatus() + " balance=" + result.getBalance());
+
+        return result.toPaymentResult(payment.getTerminalID());
     }
     
 
@@ -188,45 +153,12 @@ public class PostJetworkController {
    @RequestMapping(method = RequestMethod.POST, path = "/kyocera/postCyberMoneyPayment" ,consumes = "application/json")
    public PaymentResult postRequest4(@RequestBody PaymentKyocera payment){
    	logger.info("CyberMoney");
-   	logger.info(payment.getUserCard());
-   	
-  //현석이 테스트용 주석처리
-   	//cyber머니 과금 처리
-//   	CyberMoneyKyoceraPaymentSQL cmps = new CyberMoneyKyoceraPaymentSQL();
-//   	String money = cmps.setPayment(payment);
-//   	
-//   	String bi = cmps.reMoney(payment.getUserCard());
-//   	//
-//   	PaymentResult pr = new PaymentResult();
-//   	
-//   	System.out.println("money === "+money);
-//    	System.out.println("\"0\".equals(money) === "+"0".equals(money));
-//    	
-//    	int i = Integer.parseInt(money);
-//    	
-//   	if("0".equals(money)) {    	  
-//       	pr.setTerminalID(payment.getTerminalID());
-//       	pr.setResult("FAIL");
-//       	pr.setText("등록되지않은 카드입니다.");
-//       	pr.setReason("no card");
-//       //	pr.setBalance("0");
-//
-//   	}else if(i < 0){
-//       	pr.setTerminalID(payment.getTerminalID());
-//       	pr.setResult("FAIL");
-//       	pr.setText("잔액부족 충전후 사용하세요");
-//       	pr.setReason("no money");
-//      // 	pr.setBalance(payment.getTotalAmount());
-//   	}
-//   	
-//   	else {
-//       	pr.setTerminalID(payment.getTerminalID());
-//       	pr.setResult("OK");
-//       	pr.setText("정상결제 되었습니다.");
-//       	pr.setReason("ok");
-//       	
-//    //   	pr.setBalance(bi);
-//   	}
+   	logger.info(Mask.card(payment.getUserCard()));
+
+   	// 교세라 사이버머니 결제는 현재 꺼져 있다 (현석이 테스트용 주석처리).
+   	// 다시 켜려면 아래 두 줄의 주석을 풀고 마지막 두 줄을 지운다.
+   	// CyberMoneyResult result = new CyberMoneyKyoceraPaymentSQL().setPayment(payment);
+   	// return result.toPaymentResult(payment.getTerminalID());
        PaymentResult pr = new PaymentResult();
        return pr;
    } 
@@ -306,83 +238,64 @@ public class PostJetworkController {
     return ps;
    }
    
+   /** Xerox 결제에서 단말기 결제 결과를 기다리는 최대 시간(초). 넘으면 결제 실패(NO)로 응답한다. */
+   private static final int XEROX_RESULT_TIMEOUT_SECONDS = 120;
+
    @RequestMapping(method = RequestMethod.POST, path = "/xerox/xeroxPayment" ,consumes = "application/json")
    public PriceXeroxSendResult postRequest8(@RequestBody XeroxPay xeroxPay) throws UnknownHostException, IOException{
-	    //logger.info("requst body : {}", payment.); 
-
-
    	logger.info(xeroxPay.getJobType());
-   	//logger.info(payment.getTotalAmount());
-   	//logger.info(payment.getTerminalID());
-   	//logger.info(payment.getUserID()); = 
+
    	JetworkServerApplication.printColor = xeroxPay.getColor();
    	JetworkServerApplication.printCount = xeroxPay.getTotalPages();
    	JetworkServerApplication.printPrice = Integer.parseInt(xeroxPay.getTotalAmount());
-   	
-   	//프린터 가격정보
-   //	PrintNuriCreaditPaymentSQL cps = new PrintNuriCreaditPaymentSQL();
-   //	cps.setPayment(printNuriPay);
-   	//
-   	Socket sck = null;
-	OutputStream sos = null;
-	InputStream sis = null;
-	sck = new Socket(JetworkServerApplication.TerminalIP, 10000);
-	sck.setSoTimeout(60000);
 
-	System.out.println("=========================");
-	ReqCharge reqCharge = new ReqCharge(Integer.parseInt(xeroxPay.getTotalAmount()));
-	
-	System.out.println("=========================");
-	byte[] reqByte = reqCharge.assemble();
-	sos = sck.getOutputStream();
-	System.out.println("=========================");
-	sos.write(reqByte);
-	sos.flush();
-	System.out.println("=========================");
-	
-	sis = sck.getInputStream();
-	
-	byte[] ack = new byte[3];
+   	// 이전 결제의 결과가 남아 있으면 바로 끝나 버리므로, 요청 전에 결과 상태를 초기화한다.
+   	JetworkServerApplication.chk = false;
+   	JetworkServerApplication.chk1 = false;
 
-	int read = sis.read(ack, 0, ack.length);
+   	// 결제 단말기(10000번 포트)에 결제 요청 전문을 보낸다.
+   	try (Socket sck = new Socket(JetworkServerApplication.TerminalIP, 10000)) {
+   		sck.setSoTimeout(60000);
 
-	
+   		ReqCharge reqCharge = new ReqCharge(Integer.parseInt(xeroxPay.getTotalAmount()));
+   		byte[] reqByte = reqCharge.assemble();
+   		OutputStream sos = sck.getOutputStream();
+   		sos.write(reqByte);
+   		sos.flush();
 
-	byte[] resultBytes = new byte[1024];
-	String resultData = new String(resultBytes,0,read);
-	
-	System.out.println("resultData : "+resultData);
+   		InputStream sis = sck.getInputStream();
+   		byte[] ack = new byte[3];
+   		int read = sis.read(ack, 0, ack.length);
+   		logger.info("단말기 응답 " + read + " bytes");
+   	}
 
-//	sis.close();
-//	sos.close();
-//	sck.close();
-	//if(socket.getKeepAlive()) {
-		while(true) { 
-			System.out.println("resultData : "+resultData);
-			System.out.println("UPrintServer.chk1===="+JetworkServerApplication.chk1);
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			if(JetworkServerApplication.chk1) {
-				JetworkServerApplication.chk1 = false;
-				System.out.println("break");
-				break; 
-			} 
-		}
-		PriceXeroxSendResult ps =new PriceXeroxSendResult();
+   	// 단말기가 10020번 소켓 서버로 결과를 보내면 SocketServerDriver 가 chk1 을 true 로 바꾼다.
+   	boolean arrived = false;
+   	for (int sec = 0; sec < XEROX_RESULT_TIMEOUT_SECONDS; sec++) {
+   		if (JetworkServerApplication.chk1) {
+   			arrived = true;
+   			break;
+   		}
+   		try {
+   			Thread.sleep(1000);
+   		} catch (InterruptedException e) {
+   			Thread.currentThread().interrupt();
+   			break;
+   		}
+   	}
+   	JetworkServerApplication.chk1 = false;
 
-		if(JetworkServerApplication.chk) {
-			ps.setCmd("pay");
-			ps.setResult("OK");
-		}else {
-			ps.setCmd("pay");
-			ps.setResult("NO");
-		}
-		
-		return ps;
+   	PriceXeroxSendResult ps = new PriceXeroxSendResult();
+   	ps.setCmd("pay");
+   	if (arrived && JetworkServerApplication.chk) {
+   		ps.setResult("OK");
+   	} else {
+   		if (!arrived) {
+   			logger.info("Xerox 결제 결과 대기 시간 초과 (" + XEROX_RESULT_TIMEOUT_SECONDS + "초)");
+   		}
+   		ps.setResult("NO");
+   	}
+   	return ps;
    }
    
    @RequestMapping(method = RequestMethod.POST, path = "/postPrinter" ,consumes = "application/json")

@@ -108,29 +108,31 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 
 중계 서버 주소는 `co.kr.json.JsonHttpClient.BASE_URL` 에 있습니다.
 
-## 8. 발견한 문제 (아직 고치지 않음)
+## 8. 고친 문제와 남은 문제
 
-결제 동작이 바뀌는 문제라서 이번 정리에서는 손대지 않았습니다. 우선순위 순서입니다.
+### 고친 문제
 
-### 긴급
+| 문제 | 수정 내용 |
+|---|---|
+| SQL 인젝션 | 모든 SQL 을 `PreparedStatement` 로 바꿨다. 공통 쿼리는 `CyberMoneyLedger`, `CardPaymentLedger` 에 모았다 |
+| 사이버머니 결제가 항상 OK | 결제 결과를 `CyberMoneyResult`(OK / NO_CARD / INSUFFICIENT / DUPLICATE / ERROR)로 돌려주고 그대로 응답한다 |
+| 잔액 = 금액이면 차감 안 됨 | 잔액이 금액 이상이면 차감한다 (0원이 될 수 있음) |
+| 동시 결제 시 이중 사용 | 잔액 확인과 차감을 `UPDATE ... WHERE cyberMoney >= 금액` 한 번으로 처리한다 |
+| DB 오류·금액 형식 오류 시 500 에러 | ERROR 상태로 `FAIL` 응답하고, 트랜잭션을 롤백한다 |
+| Xerox 결제 무한 대기 | 결과를 최대 120초 기다리고, 넘으면 `NO` 로 응답한다. 요청 전에 이전 결과를 초기화하고, 단말기 소켓을 닫는다 |
+| 카드번호 로그 노출 | 카드번호는 `Mask.card()` 로 가려서 출력하고, SQL 문과 요청 본문은 더 이상 출력하지 않는다 |
+| 커넥션·Statement 누수 | 모든 SQL 클래스가 try-with-resources 로 자원을 닫고 커넥션을 반납한다 |
 
-1. **SQL 인젝션**: 모든 SQL 이 요청 값을 문자열로 이어 붙여 만듭니다. 카드번호나 단말기 ID 에 `'` 가 들어가면 임의의 SQL 이 실행될 수 있습니다. `PreparedStatement` 로 바꿔야 합니다.
-2. **사이버머니 결제가 항상 성공으로 응답**: `/postCyberMoneyPayment` 가 잔액 부족·미등록 카드 판정을 한 뒤, 마지막에 결과를 다시 `OK` 로 덮어씁니다 (`PostJetworkController` 153~157행). 잔액이 없어도 출력이 될 수 있습니다.
-3. **잔액과 결제 금액이 같으면 차감되지 않음**: `CyberMoneyPaymentSQL` 은 `잔액 - 금액 > 0` 일 때만 차감·기록합니다. 정확히 0원이 되는 결제는 기록 없이 지나갑니다.
-4. **동시 결제 시 이중 사용**: 잔액을 읽고 계산한 뒤 업데이트하는 사이에 잠금이 없어, 같은 카드로 동시에 결제하면 잔액이 한 번만 차감될 수 있습니다. `UPDATE ... SET cyberMoney = cyberMoney - ? WHERE cyberMoney >= ?` 처럼 한 번에 처리해야 합니다.
-5. **단말기 등록 확인이 항상 OK**: `/postTerminal` 도 결과를 마지막에 `OK` 로 덮어써서, 등록되지 않은 단말기도 통과합니다.
+교세라 사이버머니 처리(`CyberMoneyKyoceraPaymentSQL`)도 같은 방식으로 고쳤지만, API 는 여전히 꺼져 있다. 켜는 방법은 `PostJetworkController` 의 `/kyocera/postCyberMoneyPayment` 주석에 적어 두었다.
 
-### 높음
+### 남은 문제 (확인이 필요해서 고치지 않음)
 
-6. **Xerox 결제가 무한 대기할 수 있음**: 단말기가 결과를 보내지 않으면 `while(true)` 가 끝나지 않고 HTTP 요청 스레드가 묶입니다. 단말기 소켓도 닫지 않습니다. 결제 상태가 static 변수 하나라서 단말기가 2대 이상이면 결과가 섞입니다.
-7. **주소 불일치 확인 필요**: 컨트롤러 주소는 `/printnuri/printnuri/pricepolicy` 인데, `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보냅니다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보내는데 이 서버의 주소는 `/printnuri/kyocera/...` 입니다. 중계 서버가 다른 버전이면 문제없지만, 같은 서버라면 404 가 납니다.
-8. **교세라 사이버머니 API 비활성**: `/kyocera/postCyberMoneyPayment` 는 처리 코드가 주석 처리되어 `result` 가 빈 응답을 돌려줍니다. 원래 처리 코드는 첫 커밋의 `com/jetwork/bin/PostAPIController.java` 에 남아 있습니다.
-9. **DB 오류 시 500 에러**: DB 조회가 실패하면 잔액이 빈 문자열이 되어 `Integer.parseInt` 에서 예외가 납니다.
-10. **카드번호가 로그에 그대로 출력**: SQL 문 전체와 카드번호를 `System.out` 으로 출력합니다. 개인정보 노출 위험이 있습니다.
-
-### 보통
-
-11. 카드 결제마다 `PaymentCK` 에서 1초씩 `sleep` 하고, 같은 날 같은 승인번호를 두 번 조회합니다.
-12. 커넥션 풀 최대값이 20000으로 DB 서버가 감당할 수 있는 수를 훨씬 넘습니다.
-13. `System.out.println` 과 `logger` 가 섞여 있습니다.
-14. Spring Boot 2.3 과 Java 8 은 지원이 끝났습니다. 보안 업데이트를 받으려면 Spring Boot 3 + Java 17 이상으로 올리는 게 좋습니다.
+1. **단말기 등록 확인이 항상 OK**: `/postTerminal` 은 등록되지 않은 단말기에도 `OK` 를 응답한다. 고치면 DB 에 시리얼이 없는 단말기가 멈출 수 있어서, 운영 중인 단말기가 모두 `jw_terminal` 에 등록되어 있는지 확인한 뒤 고쳐야 한다.
+2. **주소 불일치**: 컨트롤러 주소는 `/printnuri/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
+3. **프린터 테이블 DB 불일치**: `PrinterSQL` 은 `SONTECH` DB 에서 존재를 확인하고 현재 DB(`GWS`)에 등록·갱신한다. 두 테이블이 다르면 매번 새로 INSERT 된다.
+4. **사이버머니 결제번호 중복 확인 꺼짐**: `/postCyberMoneyPayment` 는 기존 코드에서 결제번호(`cyberNo`) 중복 확인이 꺼져 있어 그대로 두었다. 같은 요청이 두 번 오면 두 번 차감된다. (교세라 쪽은 켜져 있음)
+5. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
+6. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
+7. 커넥션 풀 최대값이 20000으로 너무 크다.
+8. `System.out.println` 과 `logger` 가 섞여 있다.
+9. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
