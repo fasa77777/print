@@ -14,9 +14,10 @@ import org.apache.commons.dbcp.PoolingDriver;
 import org.apache.commons.pool.impl.GenericObjectPool;
 public class DBCPConnectionMgr {
     String jdbcDriver="com.microsoft.sqlserver.jdbc.SQLServerDriver";
-    String jdbcURL="jdbc:sqlserver://20.194.38.78:25433;DatabaseName=GWS";
-    String user="sa";
-    String password = "!fasa7721@";
+    // 접속 정보는 DbConfig 가 db.properties 또는 환경변수에서 읽어 온다.
+    String jdbcURL = DbConfig.getUrl();
+    String user = DbConfig.getUsername();
+    String password = DbConfig.getPassword();
     
     private static DBCPConnectionMgr instance;
     synchronized public static DBCPConnectionMgr getInstance() {

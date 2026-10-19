@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import com.jetwork.sql.DBCPConnectionMgr;
-import com.jetwork.sql.DBConnectionManager;
 
 public class ConnectionPool {
 	private static DBCPConnectionMgr dm ;  

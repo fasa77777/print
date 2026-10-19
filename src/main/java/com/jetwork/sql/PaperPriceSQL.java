@@ -7,7 +7,6 @@ import java.sql.Statement;
 import java.util.Vector;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.bin.ConnectionSQL;
 import com.jetwork.model.A4Terminal;
 import com.jetwork.model.PriceResult;
 import com.jetwork.model.Terminal;

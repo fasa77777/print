@@ -6,8 +6,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.bin.ConnectionSQL;
-import com.jetwork.model.Paymant;
 import com.jetwork.model.PaymentKicc;
 import com.jetwork.model.PaymentKyocera;
 

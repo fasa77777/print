@@ -5,13 +5,12 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 
-import co.kr.json.PostServer;
 
 
 
 public class JSonForm {
 	
-	public <PostServer> void setPaymentJson(String [] sD) {
+	public void setPaymentJson(String [] sD) {
 		
 		System.out.println("sD.length===="+sD.length);
 		JSONObject data = new JSONObject();

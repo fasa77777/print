@@ -6,7 +6,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.bin.ConnectionSQL;
 import com.jetwork.model.Terminal;
 
 public class TerminalInfoSQL {
