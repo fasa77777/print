@@ -24,6 +24,11 @@ public class KiccCreaditPaymentSQL {
 			payType = "캐시비";
 		}
 
+		// 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다. 티머니·캐시비는 카드사명을 쓰지 않는다.
+		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
+		String cardName = isCard ? CardCompanyName.getCardName(payment.getR12())
+				: CardCompanyName.getName(CardPaymentLedger.trim(payment.getR12()));
+
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
@@ -33,7 +38,7 @@ public class KiccCreaditPaymentSQL {
 			conn.setAutoCommit(false);
 			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
 					payment.getPaperSize(), payment.getColor(), payment.getR09(), payment.getJobType(),
-					CardCompanyName.getName(CardPaymentLedger.trim(payment.getR12())), null);
+					cardName, null);
 			conn.commit();
 		} catch (Exception e) {
 			e.printStackTrace();

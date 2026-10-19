@@ -39,7 +39,7 @@ public class JSonForm {
 			data.put("payTypeTM","");//R33
 		}else {
 			String payTypeTM= sD[37].replaceAll("R33=", "");
-			data.put("payTypeTM",sD[37]);//R33
+			data.put("payTypeTM", payTypeTM.trim());//R33 (예전에는 "R33=" 접두어가 붙은 채로 보내 티머니 판정이 안 됐다)
 		}
 		
 		data.put("paperSize","A4");

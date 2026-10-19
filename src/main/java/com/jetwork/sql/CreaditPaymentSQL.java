@@ -31,7 +31,7 @@ public class CreaditPaymentSQL {
 			}
 			ck.setTerminal1(payment.getR09());
 
-			insertIfNotExistsToday(payment, payType, payment.getR09(), CardCompanyName.getName(payment.getR12()));
+			insertIfNotExistsToday(payment, payType, payment.getR09(), CardCompanyName.getCardName(payment.getR12()));
 		} else {
 			String r33 = CardPaymentLedger.trim(payment.getR33());
 			// 티머니·캐시비는 승인번호 대신 현재 시각(밀리초)을 기록한다.
