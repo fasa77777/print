@@ -1,9 +1,6 @@
 package com.jetwork.sql;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Calendar;
 
 import org.slf4j.Logger;
@@ -13,143 +10,89 @@ import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.CardCompanyName;
 import com.jetwork.model.PaymentKicc;
 
-
-
+/** 신용·체크카드, 티머니, 캐시비 결제 기록 (/printnuri/postCraditPayment). */
 public class CreaditPaymentSQL {
-	private Connection conn;
-	private Statement stmt;
-	private ResultSet rs;
+
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
 	public String setPayment(PaymentKicc payment) {
-		String money = "";
-		
-		boolean ab = false;
-		 DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-       // Connection con = null;
+		logger.info("R09=" + payment.getR09() + " R11=" + payment.getR11() + " R33=" + payment.getR33());
 
+		String r11 = payment.getR11();
+		boolean isCard = "Y".equals(r11) || "N".equals(r11);
 
-		conn  = dbcp.getConnection();
-		
+		if (isCard) {
+			String payType = "Y".equals(r11) ? "체크카드" : "신용카드";
+
+			// 오늘 같은 승인번호로 이미 기록된 결제가 있으면 다시 기록하지 않는다.
+			PaymentCK ck = new PaymentCK();
+			if (!ck.setTerminal(payment.getR09())) {
+				return "";
+			}
+			ck.setTerminal1(payment.getR09());
+
+			insertIfNotExistsToday(payment, payType, payment.getR09(), CardCompanyName.getCardName(payment.getR12()));
+		} else {
+			String r33 = CardPaymentLedger.trim(payment.getR33());
+			// 교통카드 결제는 승인번호 대신 현재 시각(밀리초)을 기록한다.
+			String now = String.valueOf(Calendar.getInstance().getTimeInMillis());
+			if ("TM".equals(r33)) {
+				insert(payment, "티머니", now, "티머니");
+			} else if ("EB".equals(r33)) {
+				insert(payment, "캐시비", now, "캐시비");
+			} else {
+				// 티머니·캐시비가 아닌 교통카드(레일플러스 등)는 예전에는 기록 없이 버려졌다.
+				logger.info("기타 교통카드 결제 R33=" + r33);
+				insert(payment, "교통카드", now, "교통카드");
+			}
+		}
+		return "";
+	}
+
+	private void insertIfNotExistsToday(PaymentKicc payment, String payType, String paymentOk, String cardName) {
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return;
+		}
 		try {
 			conn.setAutoCommit(false);
-			
-			String payType = "";
-			logger.info(payment.getR09());
-			logger.info(payment.getR11());
-			logger.info(payment.getR30());
-			logger.info(payment.getR31());
-			logger.info(payment.getR32());
-			logger.info(payment.getR33());
-			if("Y".equals(payment.getR11())) {
-				payType = "체크카드";
-				ab = true;
-			}else if("N".equals(payment.getR11())) {
-				payType = "신용카드";	
-				ab = true;
+			if (CardPaymentLedger.existsToday(conn, paymentOk)) {
+				System.out.println("중복");
+				conn.commit();
+			} else {
+				CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
+						payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
+						payment.getTotalPages());
+				conn.commit();
+				CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			}
-			
-			if(ab) {
-		    	PaymentCK ck = new PaymentCK();
-		    	boolean ck1 = ck.setTerminal(payment.getR09());
-		    	if(ck1) {
-		    		ck.setTerminal1(payment.getR09());
-		    		String stringSQL ="select * " + 
-							"from [jw_payment] where  (CONVERT(CHAR(10), reg_date, 120) = CONVERT(CHAR(10), getdate(), 120)) "
-							+ "and payment_ok = '"+payment.getR09()+"'";         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
-				//	System.out.println(stringSQL);
-					stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-					rs = stmt.executeQuery(stringSQL);
-					conn.commit();
-					int i =1;
-					String id = "";
-					
-					boolean a   = true;
-					while(rs.next()){
-						a=false;
-						System.out.println("중복");
-					}
-		    		
-		    		if(a) {
-						String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],"
-								+ "[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName],[payment_totalCount]) VALUES " +
-								" ('"+payment.getTerminalID()+"','"+payment.getTotalAmount()+"',N'"+payType+"','"+payment.getPaperSize()+"',"
-										+ "'"+payment.getColor()+"','"+payment.getR09()+"','"+payment.getJobType()+"',getdate(), N'"+CardCompanyName.getName(payment.getR12()) +"','"+payment.getTotalPages()+"' );";
-						stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-						System.out.println(insertSQL);
-						stmt.executeUpdate(insertSQL);		
-						conn.commit();
-		    		}
-		    		
-	
-					
-					
-					
-					
-		    	}
-
-			}else {
-				 Calendar cal = Calendar.getInstance();
-					if("TM".equals(payment.getR33().trim())) {
-						payType = "티머니";
-						String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],"
-								+ "[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName],[payment_totalCount]) VALUES " +
-								" ('"+payment.getTerminalID()+"','"+payment.getTotalAmount()+"',N'"+payType+"','"+payment.getPaperSize()+"',"
-										+ "'"+payment.getColor()+"','"+cal.getTimeInMillis()+"','"+payment.getJobType()+"',getdate(), N'티머니','"+payment.getTotalPages()+"' );";
-						stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-						System.out.println(insertSQL);
-						stmt.executeUpdate(insertSQL);		
-						conn.commit();
-						
-					}else if("EB".equals(payment.getR33())) {
-						payType = "캐시비";
-						String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],"
-								+ "[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName],[payment_totalCount]) VALUES " +
-								" ('"+payment.getTerminalID()+"','"+payment.getTotalAmount()+"',N'"+payType+"','"+payment.getPaperSize()+"',"
-										+ "'"+payment.getColor()+"','"+cal.getTimeInMillis()+"','"+payment.getJobType()+"',getdate(), N'캐시비','"+payment.getTotalPages()+"' );";
-						stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-						System.out.println(insertSQL);
-						stmt.executeUpdate(insertSQL);		
-						conn.commit();
-					}
-			}
-
-			//r09 r11 r12 r15 r16 r33
-//			logger.info(payment.getTerminalID());
-//			logger.info(payment.getTotalAmount());
-//			logger.info(payment.getPaperSize());
-//			logger.info(payment.getColor());
-//			logger.info(payment.getR09());
-//			logger.info(payment.getJobType());  CardCompanyName.getName(payment.getR13())
-//			logger.info(payment.getR13());
-
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
-		
-		}finally{
-			dbcp.freeConnection(conn, stmt, rs);
+			CyberMoneyLedger.rollbackQuietly(conn);
+		} finally {
+			dbcp.freeConnection(conn);
 		}
-		
-		
-		return money;
 	}
-	
-	
-	public void freeConn(){
-		try {
-			if(stmt != null){
-				stmt.close();
-			}
-			if(rs != null){
-				rs.close();
-			}
 
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	private void insert(PaymentKicc payment, String payType, String paymentOk, String cardName) {
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return;
 		}
-		
-		//dm.freeConnection("mssql", conn);
+		try {
+			conn.setAutoCommit(false);
+			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
+					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
+					payment.getTotalPages());
+			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
+		} catch (Exception e) {
+			e.printStackTrace();
+			CyberMoneyLedger.rollbackQuietly(conn);
+		} finally {
+			dbcp.freeConnection(conn);
+		}
 	}
 }

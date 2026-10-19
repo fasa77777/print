@@ -10,6 +10,12 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.jetwork.bin.JetworkServerApplication;
 
@@ -19,22 +25,81 @@ import co.kr.json.JSonForm2;
 import co.kr.json.JSonForm3;
 import co.kr.up.util.Bytes;
 import co.kr.up.util.HexUtils;
-//드라이버와 소켓연결
-public class SocketServerDriver  implements Runnable {
-	
-	Socket socket  = null;
-	@SuppressWarnings("static-access")
+/**
+ * 결제 단말기 소켓 서버 (포트 10020).
+ *
+ * 접속을 받는 스레드는 받기만 하고, 실제 처리(전문 해석, 중계 서버 HTTP 요청)는
+ * 작업 스레드 풀에서 단말기마다 따로 한다. 한 단말기 처리가 느려도 다른 단말기는 기다리지 않는다.
+ */
+public class SocketServerDriver implements Runnable {
+
+	private static final int PORT = 10020;
+	/** 동시에 처리할 수 있는 단말기 접속 수 */
+	private static final int WORKER_THREADS = 50;
+	/** 작업 스레드가 모두 바쁠 때 줄 세워 둘 수 있는 접속 수. 넘으면 접속 받는 스레드가 직접 처리한다 */
+	private static final int QUEUE_SIZE = 1000;
+	/** 단말기가 접속 후 이 시간 안에 데이터를 보내지 않으면 끊는다 */
+	private static final int READ_TIMEOUT_MILLIS = 10000;
+
+	private final ExecutorService workers = new ThreadPoolExecutor(
+			WORKER_THREADS, WORKER_THREADS, 60L, TimeUnit.SECONDS,
+			new ArrayBlockingQueue<Runnable>(QUEUE_SIZE),
+			new ThreadFactory() {
+				private final AtomicInteger seq = new AtomicInteger();
+
+				@Override
+				public Thread newThread(Runnable r) {
+					Thread t = new Thread(r, "terminal-socket-" + seq.incrementAndGet());
+					t.setDaemon(true);
+					return t;
+				}
+			},
+			new ThreadPoolExecutor.CallerRunsPolicy());
+
 	public void run() {
-		  
-        int port = Integer.parseInt("10020");
- 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
- 
-            System.out.println("Server is listening on port " + port);
- 
-            while (true) {
-            	try {
-            		 socket = serverSocket.accept();
+		try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+			System.out.println("Server is listening on port " + PORT + " (worker threads " + WORKER_THREADS + ")");
+
+			while (true) {
+				final Socket socket;
+				try {
+					socket = serverSocket.accept();
+				} catch (IOException e) {
+					System.out.println("accept 실패: " + e);
+					continue;
+				}
+				workers.execute(new Runnable() {
+					@Override
+					public void run() {
+						handleConnection(socket);
+					}
+				});
+			}
+		} catch (IOException ex) {
+			System.out.println("Server exception: " + ex.getMessage());
+			ex.printStackTrace();
+		}
+	}
+
+	/** 단말기 접속 하나를 처리하고 소켓을 닫는다. */
+	private void handleConnection(Socket socket) {
+		try {
+			socket.setSoTimeout(READ_TIMEOUT_MILLIS);
+			handle(socket);
+		} catch (Exception e) {
+			System.out.println("Socket close" + e);
+		} finally {
+			try {
+				socket.close();
+			} catch (IOException e) {
+				// 이미 닫힘
+			}
+		}
+	}
+
+	/** 단말기가 보낸 전문 한 건을 해석해서 처리한다. (처리 내용은 기존과 같다) */
+	@SuppressWarnings("static-access")
+	private void handle(Socket socket) throws Exception {
                      System.out.println("New Terminal connected  10020");
                      InputStream is = socket.getInputStream();
 
@@ -210,7 +275,7 @@ public class SocketServerDriver  implements Runnable {
          	            	//stBuffer.append(Bytes.toHexString(b_command6[i]));
          	            	stBuffer.append(HexUtils.toHexString(b_command7[i]));
          	            }
-         	            System.out.println("ISO-8859-1 -> EUC-KR        : " +stBuffer.toString());
+         	            System.out.println("사이버머니 카드 : " + co.kr.up.util.Mask.card(stBuffer.toString()));
          	            
          	            JSonForm2 jf = new JSonForm2();
          				jf.setPaymentJson(stBuffer.toString());
@@ -426,21 +491,8 @@ public class SocketServerDriver  implements Runnable {
         	        
         	        
         	        
-                     socket.close();
-            	}catch (Exception e) {
-					// TODO: handle exception
-            		System.out.println("Socket close"+e);
-            		socket.close();
-				}
-               
-            }
- 
-        } catch (IOException ex) {
-            System.out.println("Server exception: " + ex.getMessage());
-            ex.printStackTrace();
-        } 
 	}
-	
+
 	  public String stringToHex(String s) {
 		    String result = "";
 

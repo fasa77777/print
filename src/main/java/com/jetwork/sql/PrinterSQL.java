@@ -1,168 +1,79 @@
 package com.jetwork.sql;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.Printer;
+
 /**
-
-SELECT TOP (1000) [devid]
-      ,[sitename]
-      ,[desc]
-      ,[errmsg]
-      ,[modelname]
-      ,[total]
-      ,[mono]
-      ,[color]
-      ,[black]
-      ,[cyan]
-      ,[magenta]
-      ,[yellow]
-      ,[devicestatus]
-      ,[printerstatus]
-      ,[coverstatus]
-      ,[serialnumber]
-      ,[macaddr]
-  FROM [SONTECH].[dbo].[printer]
-  
-  
-  
-  
-INSERT INTO [dbo].[printer] ([devid] ,[sitename] ,[desc] ,[errmsg] ,[modelname] ,[total] ,[mono] ,[color] ,[black] ,[cyan] ,[magenta] ,[yellow] ,[devicestatus] ,[printerstatus] ,[coverstatus] ,[serialnumber] ,[macaddr] ,[regdate])
-     VALUES
-           (<devid, nvarchar(50),>  ,<sitename, nvarchar(50),> ,<desc, nvarchar(50),>  ,<errmsg, nvarchar(50),> ,<modelname, nvarchar(50),>  ,<total, int,>  ,<mono, int,> ,<color, int,> ,<black, int,>
-           ,<cyan, int,> ,<magenta, int,> ,<yellow, int,> ,<devicestatus, nvarchar(50),>  ,<printerstatus, nvarchar(50),>  ,<coverstatus, nvarchar(50),> ,<serialnumber, nvarchar(50),> ,<macaddr, nvarchar(50),> ,<regdate, datetime,>)
-
- "UPDATE [dbo].[printer] "
- "  SET [devid] = <devid, nvarchar(50),> " +
- "     ,[sitename] = <sitename, nvarchar(50),>  " +
- "     ,[desc] = <desc, nvarchar(50),>  " +
- "     ,[errmsg] = <errmsg, nvarchar(50),>  " +
- "     ,[modelname] = <modelname, nvarchar(50),>  " +
- "     ,[total] = <total, int,>  " +
- "     ,[mono] = <mono, int,>  " +
- "     ,[color] = <color, int,>  " +
- "     ,[black] = <black, int,>  " +
- "     ,[cyan] = <cyan, int,>  " +
- "     ,[magenta] = <magenta, int,>  " +
- "     ,[yellow] = <yellow, int,>  " +
- "     ,[devicestatus] = <devicestatus, nvarchar(50),> " +
- "     ,[printerstatus] = <printerstatus, nvarchar(50),> " +
- "     ,[coverstatus] = <coverstatus, nvarchar(50),> " +
- "     ,[serialnumber] = <serialnumber, nvarchar(50),> " +
- "     ,[macaddr] = <macaddr, nvarchar(50),> " +
- "     ,[regdate] = <regdate, datetime,> " +
- " WHERE [serialnumber] = <serialnumber, nvarchar(50),> " ;
- * 
- * 
- * 
- INSERT INTO [dbo].[printer] ([devid] ,[sitename] ,[desc1] ,[errmsg] ,[modelname] ,[total] ,[mono] ,[color] ,[black] ,[cyan] ,[magenta] ,[yellow] ,[devicestatus] ,[printerstatus] ,[coverstatus] ,[serialnumber] ,[macaddr] ,[regdate])"
-						+ " VALUES ( '"+printer.getDevid()+"'  ,'"+printer.getSitename()+"' ,'"+printer.getDesc()+"'  ,'"+printer.getErrmsg()+"' ,'"+printer.getModelname()+"'  ,"+printer.getTotal()+"  ,"+printer.getMono()+" ,"+printer.getColor()+" ,"+printer.getBlack()+""
-						+ "  ,"+printer.getCyan()+" ,"+printer.getMagenta()+" ,"+printer.getYellow()+" ,'"+printer.getDevicestatus()+"'  ,'"+printer.getPrinterstatus()+"'  ,'"+printer.getCoverstatus()+"' ,'"+printer.getSerialnumber()+"' ,'"+printer.getMacaddr()+"' ,getdate() )";
-				
- * **/
-
-
+ * 프린터 상태 등록/갱신 (/printnuri/postPrinter).
+ *
+ * 주의: 존재 확인은 [SONTECH].[dbo].[printer] 에서 하고, 등록·갱신은 현재 DB(GWS)의 [dbo].[printer] 에 한다.
+ * 기존 코드 그대로이며, 두 테이블이 같은 것인지 확인이 필요하다. (docs/ARCHITECTURE.md 참고)
+ */
 public class PrinterSQL {
-	private Connection conn;
-	private Statement stmt;
-	private ResultSet rs;
-	private boolean userFlag = false;
-	
+
+	private static final String UPDATE_SQL = "UPDATE [dbo].[printer] SET "
+			+ " [devid] = ?, [sitename] = ?, [desc1] = ?, [errmsg] = ?, [modelname] = ?, "
+			+ " [total] = ?, [mono] = ?, [color] = ?, [black] = ?, [cyan] = ?, [magenta] = ?, [yellow] = ?, "
+			+ " [devicestatus] = ?, [printerstatus] = ?, [coverstatus] = ?, [macaddr] = ?, [regdate] = getdate() "
+			+ " WHERE [serialnumber] = ?";
+
+	private static final String INSERT_SQL = "INSERT INTO [dbo].[printer] ([devid], [sitename], [desc1], [errmsg], [modelname], "
+			+ " [total], [mono], [color], [black], [cyan], [magenta], [yellow], "
+			+ " [devicestatus], [printerstatus], [coverstatus], [macaddr], [serialnumber], [regdate]) "
+			+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, getdate())";
+
+	/** @return 이미 등록된 프린터였으면 true (갱신), 새로 등록했으면 false */
 	public boolean setPrinter(Printer printer) {
-		//String money = "";
-		
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		 conn  = dbcp.getConnection();
-		
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return false;
+		}
+		boolean registered = false;
 		try {
 			conn.setAutoCommit(false);
-			
-			
-			String stringSQL ="select * from [SONTECH].[dbo].[printer] where [serialnumber]  = '"+printer.getSerialnumber()+"'";
-			//		+ " and [serial] = '"+terminal.getSerial()+"' ";         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
-			System.out.println(stringSQL);
-			stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			rs = stmt.executeQuery(stringSQL);
-			while(rs.next()){
-				//money = rs.getString(2);
-				//money = rs.getString("cyberMoney");
-				
-				System.out.println("등록된 복사기");
-				userFlag = true;
+
+			try (PreparedStatement ps = conn.prepareStatement(
+					"SELECT 1 FROM [SONTECH].[dbo].[printer] WHERE [serialnumber] = ?")) {
+				ps.setString(1, printer.getSerialnumber());
+				try (ResultSet rs = ps.executeQuery()) {
+					registered = rs.next();
+				}
 			}
-			
-			if(userFlag){
-				//System.out.println("사용중인 복사기   111");
-					
-				String updateSQL =  "UPDATE [dbo].[printer] " +
-						 "  SET [devid] = '"+printer.getDevid()+"' " +
-						 "     ,[sitename] = N'"+printer.getSitename()+"'  " +
-						 "     ,[desc1] = N'"+printer.getDesc()+"'  " +
-						 "     ,[errmsg] = N'"+printer.getErrmsg()+"'  " +
-						 "     ,[modelname] = N'"+printer.getModelname()+"' " +
-						 "     ,[total] = "+printer.getTotal()+" " +
-						 "     ,[mono] = "+printer.getMono()+"  " +
-						 "     ,[color] = "+printer.getColor()+"  " +
-						 "     ,[black] = "+printer.getBlack()+"  " +
-						 "     ,[cyan] = "+printer.getCyan()+"  " +
-						 "     ,[magenta] = "+printer.getMagenta()+"  " +
-						 "     ,[yellow] = "+printer.getYellow()+"  " +
-						 "     ,[devicestatus] = N'"+printer.getDevicestatus()+"' " +
-						 "     ,[printerstatus] = N'"+printer.getPrinterstatus()+"' " +
-						 "     ,[coverstatus] = N'"+printer.getCoverstatus()+"' " +
-						 "     ,[macaddr] = '"+printer.getMacaddr()+"' " +
-						 "     ,[regdate] = getdate() " +
-						 " WHERE [serialnumber] = '"+printer.getSerialnumber()+"'  " ;
-				
-				System.out.println(updateSQL);
-				stmt.executeUpdate(updateSQL);		
-				
-		
-			}else {
-				String insertSQL = "INSERT INTO [dbo].[printer] ([devid] ,[sitename] ,[desc1] ,[errmsg] ,[modelname] ,[total] ,[mono] ,[color] ,[black] ,[cyan] ,[magenta] ,[yellow] ,[devicestatus] ,[printerstatus] ,[coverstatus] ,[serialnumber] ,[macaddr] ,[regdate])"
-						+ " VALUES ( '"+printer.getDevid()+"'  ,N'"+printer.getSitename()+"' ,N'"+printer.getDesc()+"'  ,N'"+printer.getErrmsg()+"' ,N'"+printer.getModelname()+"'  ,"+printer.getTotal()+"  ,"+printer.getMono()+" ,"+printer.getColor()+" ,"+printer.getBlack()+""
-						+ "  ,"+printer.getCyan()+" ,"+printer.getMagenta()+" ,"+printer.getYellow()+" ,N'"+printer.getDevicestatus()+"'  ,N'"+printer.getPrinterstatus()+"'  ,N'"+printer.getCoverstatus()+"' ,'"+printer.getSerialnumber()+"' ,'"+printer.getMacaddr()+"' ,getdate() )";
-				
-				System.out.println(insertSQL);
-				stmt.executeUpdate(insertSQL);		
-				
+
+			// UPDATE 와 INSERT 모두 앞 16개 값의 순서가 같고, 17번째가 시리얼 번호다.
+			try (PreparedStatement ps = conn.prepareStatement(registered ? UPDATE_SQL : INSERT_SQL)) {
+				ps.setString(1, printer.getDevid());
+				ps.setNString(2, printer.getSitename());
+				ps.setNString(3, printer.getDesc());
+				ps.setNString(4, printer.getErrmsg());
+				ps.setNString(5, printer.getModelname());
+				ps.setInt(6, printer.getTotal());
+				ps.setInt(7, printer.getMono());
+				ps.setInt(8, printer.getColor());
+				ps.setInt(9, printer.getBlack());
+				ps.setInt(10, printer.getCyan());
+				ps.setInt(11, printer.getMagenta());
+				ps.setInt(12, printer.getYellow());
+				ps.setNString(13, printer.getDevicestatus());
+				ps.setNString(14, printer.getPrinterstatus());
+				ps.setNString(15, printer.getCoverstatus());
+				ps.setString(16, printer.getMacaddr());
+				ps.setString(17, printer.getSerialnumber());
+				ps.executeUpdate();
 			}
-			
 			conn.commit();
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
-		
-		}finally{
-			//this.freeConn();
-			dbcp.freeConnection(conn, stmt, rs);
+			CyberMoneyLedger.rollbackQuietly(conn);
+		} finally {
+			dbcp.freeConnection(conn);
 		}
-		
-		System.out.println("userFlag =="+userFlag);
-		return userFlag;
-	}
-	
-	
-	public void freeConn(){
-		try {
-			if(stmt != null){
-				stmt.close();
-			}
-			if(rs != null){
-				rs.close();
-			}
-		
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		//dm.freeConnection("mssql", conn);
+		System.out.println("printer registered == " + registered);
+		return registered;
 	}
 }
