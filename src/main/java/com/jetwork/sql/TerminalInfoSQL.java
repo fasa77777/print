@@ -10,12 +10,21 @@ import com.jetwork.model.Terminal;
 /** 단말기 등록 확인과 버전 정보 갱신 (/printnuri/postTerminal). */
 public class TerminalInfoSQL {
 
-	/** 단말기 ID 와 시리얼이 등록되어 있으면 버전 정보를 갱신하고 true 를 돌려준다. */
-	public boolean setTerminal(Terminal terminal) {
+	public enum Status {
+		/** jw_terminal 에 단말기 ID 와 시리얼이 함께 등록되어 있음 */
+		REGISTERED,
+		/** 등록되지 않은 단말기 (또는 시리얼 불일치) */
+		NOT_REGISTERED,
+		/** DB 오류로 확인하지 못함 */
+		ERROR
+	}
+
+	/** 단말기 ID 와 시리얼이 등록되어 있으면 버전 정보를 갱신한다. */
+	public Status setTerminal(Terminal terminal) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
-			return false;
+			return Status.ERROR;
 		}
 		boolean registered = false;
 		try {
@@ -45,9 +54,10 @@ public class TerminalInfoSQL {
 		} catch (Exception e) {
 			e.printStackTrace();
 			CyberMoneyLedger.rollbackQuietly(conn);
+			return Status.ERROR;
 		} finally {
 			dbcp.freeConnection(conn);
 		}
-		return registered;
+		return registered ? Status.REGISTERED : Status.NOT_REGISTERED;
 	}
 }

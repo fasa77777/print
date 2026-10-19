@@ -73,24 +73,25 @@ public class PostJetworkController {
     	logger.info(terminal.getAgentVersion()); 
     	logger.info(terminal.getTerminalVersion());
     	
-    	//terminal  DB
-    	//현석이 테스트용 주석처리
-    	TerminalInfoSQL tfs = new TerminalInfoSQL();
-    	boolean check = tfs.setTerminal(terminal);
-    	
-    	PayRresult pr = new PayRresult();
+    	// 단말기 ID 와 시리얼이 jw_terminal 에 등록된 단말기만 OK 로 응답한다.
+    	TerminalInfoSQL.Status status = new TerminalInfoSQL().setTerminal(terminal);
 
+    	PayRresult pr = new PayRresult();
     	pr.setTerminalID(terminal.getTerminalID());
-    	if(check) {
+    	switch (status) {
+    	case REGISTERED:
     		pr.setResult("OK");
-    		
-    		System.out.println("OK");
-    	}else {
+    		break;
+    	case NOT_REGISTERED:
+    		logger.warn("미등록 단말기 접속 terminalID=" + terminal.getTerminalID() + " serial=" + terminal.getSerial()
+    				+ " agentVersion=" + terminal.getAgentVersion());
     		pr.setResult("FALSE");
+    		break;
+    	default:
+    		logger.warn("단말기 확인 중 DB 오류 terminalID=" + terminal.getTerminalID());
+    		pr.setResult("ERROR");
+    		break;
     	}
-    	
-    	//PayRresult pr1 = new PayRresult();
-    	pr.setResult("OK");
         return pr;
     }
     

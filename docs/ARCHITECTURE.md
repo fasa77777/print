@@ -119,6 +119,7 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 잔액 = 금액이면 차감 안 됨 | 잔액이 금액 이상이면 차감한다 (0원이 될 수 있음) |
 | 동시 결제 시 이중 사용 | 잔액 확인과 차감을 `UPDATE ... WHERE cyberMoney >= 금액` 한 번으로 처리한다 |
 | DB 오류·금액 형식 오류 시 500 에러 | ERROR 상태로 `FAIL` 응답하고, 트랜잭션을 롤백한다 |
+| 미등록 단말기도 OK | `/postTerminal` 은 `jw_terminal` 에 단말기 ID 와 시리얼이 함께 등록된 경우만 `OK`, 아니면 `FALSE`, DB 오류면 `ERROR` 로 응답하고 경고 로그를 남긴다 |
 | Xerox 결제 무한 대기 | 결과를 최대 120초 기다리고, 넘으면 `NO` 로 응답한다. 요청 전에 이전 결과를 초기화하고, 단말기 소켓을 닫는다 |
 | 카드번호 로그 노출 | 카드번호는 `Mask.card()` 로 가려서 출력하고, SQL 문과 요청 본문은 더 이상 출력하지 않는다 |
 | 커넥션·Statement 누수 | 모든 SQL 클래스가 try-with-resources 로 자원을 닫고 커넥션을 반납한다 |
@@ -127,12 +128,11 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 
 ### 남은 문제 (확인이 필요해서 고치지 않음)
 
-1. **단말기 등록 확인이 항상 OK**: `/postTerminal` 은 등록되지 않은 단말기에도 `OK` 를 응답한다. 고치면 DB 에 시리얼이 없는 단말기가 멈출 수 있어서, 운영 중인 단말기가 모두 `jw_terminal` 에 등록되어 있는지 확인한 뒤 고쳐야 한다.
-2. **주소 불일치**: 컨트롤러 주소는 `/printnuri/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
-3. **프린터 테이블 DB 불일치**: `PrinterSQL` 은 `SONTECH` DB 에서 존재를 확인하고 현재 DB(`GWS`)에 등록·갱신한다. 두 테이블이 다르면 매번 새로 INSERT 된다.
-4. **사이버머니 결제번호 중복 확인 꺼짐**: `/postCyberMoneyPayment` 는 기존 코드에서 결제번호(`cyberNo`) 중복 확인이 꺼져 있어 그대로 두었다. 같은 요청이 두 번 오면 두 번 차감된다. (교세라 쪽은 켜져 있음)
-5. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
-6. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
-7. 커넥션 풀 최대값이 20000으로 너무 크다.
-8. `System.out.println` 과 `logger` 가 섞여 있다.
-9. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+1. **주소 불일치**: 컨트롤러 주소는 `/printnuri/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
+2. **프린터 테이블 DB 불일치**: `PrinterSQL` 은 `SONTECH` DB 에서 존재를 확인하고 현재 DB(`GWS`)에 등록·갱신한다. 두 테이블이 다르면 매번 새로 INSERT 된다.
+3. **사이버머니 결제번호 중복 확인 꺼짐**: `/postCyberMoneyPayment` 는 기존 코드에서 결제번호(`cyberNo`) 중복 확인이 꺼져 있어 그대로 두었다. 같은 요청이 두 번 오면 두 번 차감된다. (교세라 쪽은 켜져 있음)
+4. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
+5. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
+6. 커넥션 풀 최대값이 20000으로 너무 크다.
+7. `System.out.println` 과 `logger` 가 섞여 있다.
+8. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
