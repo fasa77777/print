@@ -7,6 +7,10 @@ import org.json.simple.JSONObject;
 
 import com.jetwork.bin.JetworkServerApplication;
 
+/**
+ * 사이버머니 카드 태그(단말기 작업 코드 06)를 받으면, 진행 중인 출력 작업 금액으로
+ * 중계 서버의 /kyocera/postCyberMoneyPayment 에 결제를 요청한다. 결제번호는 현재 시각(yyyyMMddHHmmss)이다.
+ */
 public class JSonForm2 {
 	public void setPaymentJson(String card) {
 //		

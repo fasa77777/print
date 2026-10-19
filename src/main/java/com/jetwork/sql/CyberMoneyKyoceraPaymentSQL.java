@@ -15,6 +15,10 @@ import co.kr.up.util.Mask;
  */
 public class CyberMoneyKyoceraPaymentSQL {
 
+	/**
+	 * 교세라 사이버머니로 결제한다. CyberMoneyPaymentSQL 과 같고,
+	 * 같은 결제번호(cyberNo)로 이미 처리된 결제면 DUPLICATE 로 돌려주는 점만 다르다.
+	 */
 	public CyberMoneyResult setPayment(PaymentKyocera payment) {
 		String card = payment.getUserCard();
 		Integer amount = CyberMoneyLedger.parseMoney(payment.getTotalAmount());

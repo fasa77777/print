@@ -1,12 +1,20 @@
 package com.jetwork.bin;
 
+/**
+ * 결제 단말기로 보내는 요청 전문의 공통 틀.
+ *
+ * 전문 구조: STX(0x02) + 본문 길이(2바이트) + 순번(1) + CMD(0xFB) + GCD(0x14) + 작업 코드(1) + 본문 + ETX(0x03) + CRC(2바이트)
+ * 본문과 작업 코드는 하위 클래스(예: ReqCharge)가 정한다.
+ */
 public abstract class ReqMessage {
 	private byte stx = 0x02;
 	private short cmd = 0xFB;
+	/** 전문 순번. 보낼 때마다 1씩 늘고 255 다음은 1 이다 */
 	private static short cnt = 0;
 	private byte gcd = 0x14;
 	private byte etx = 0x03;
 
+	/** 헤더·본문·꼬리·CRC 를 붙여 단말기로 보낼 전문 바이트를 만든다. */
 	public byte[] assemble() {
 		byte[] header = new byte[7];
 		byte[] body = assembleBody();
@@ -42,6 +50,7 @@ public abstract class ReqMessage {
 		return message;
 	}
 	
+	/** 디버깅용: 전문을 16진수로 출력한다. */
 	private void printMessage(byte[] strBytes) {
 		System.out.print("<<");
 		
@@ -55,6 +64,7 @@ public abstract class ReqMessage {
 		
 	}
 	
+	/** 전문 끝 2바이트에 CRC-16 값을 채우고, 길이 필드도 실제 길이로 다시 쓴다. */
 	private void setCrc(byte[] data) {
 	    int SEED = 32773;
 	    
@@ -89,7 +99,9 @@ public abstract class ReqMessage {
 		
 	}
 
+	/** 전문 본문 (예: "S01=A1;S02=40;S09=00;S10=금액;") */
 	public abstract byte[] assembleBody();
+	/** 작업 코드 (헤더 7번째 바이트) */
 	public abstract byte getJobCode();
 
 

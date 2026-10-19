@@ -1,5 +1,8 @@
 package com.jetwork.model;
 
+/**
+ * KICC 단말기의 발급사 코드(R12, 3자리)를 카드사명으로 바꾼다. 코드표는 파일 아래 주석 참고.
+ */
 public class CardCompanyName {
 
 	/** 카드사명을 알 수 없을 때 기록하는 이름 */

@@ -12,6 +12,13 @@ import co.kr.up.util.Mask;
 /** 사이버머니 결제 (/printnuri/postCyberMoneyPayment). */
 public class CyberMoneyPaymentSQL {
 
+	/**
+	 * 사이버머니로 결제한다.
+	 * 1. 금액이 숫자가 아니면 ERROR
+	 * 2. 처음 보는 카드면 0원으로 등록하고 NO_CARD
+	 * 3. 잔액이 금액보다 적으면 INSUFFICIENT (차감하지 않음)
+	 * 4. 차감하고 jw_payment 에 기록, last_dt 갱신 후 OK (처리 후 잔액 포함)
+	 */
 	public CyberMoneyResult setPayment(PaymentKicc payment) {
 		String card = payment.getUserCard();
 		Integer amount = CyberMoneyLedger.parseMoney(payment.getTotalAmount());

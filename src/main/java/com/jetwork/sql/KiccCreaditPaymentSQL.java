@@ -14,6 +14,10 @@ public class KiccCreaditPaymentSQL {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+	/**
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 last_dt 를 갱신한다.
+	 * R10 이 Y 면 체크카드, 아니면 신용카드. R33 이 TM/EB 면 티머니/캐시비. 반환값은 쓰지 않는다.
+	 */
 	public String setPayment(PaymentCreaditKicc payment) {
 		logger.info("R10=" + payment.getR10() + " R12=" + payment.getR12() + " R33=" + payment.getR33());
 

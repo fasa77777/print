@@ -2,6 +2,10 @@ package com.jetwork.model;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
 
+/**
+ * 카드·사이버머니 결제 요청 (/printnuri/postCraditPayment, /printnuri/postCyberMoneyPayment).
+ * R01~R34 는 KICC 결제 단말기의 응답 전문 필드를 그대로 받은 것이다.
+ */
 public class PaymentKicc {
 /**
   {"R01":"P","R02":"A","R03":"0000","R04":"0000","R05":"031","R06":"0000","R07":"2006272309186","R08":"","R09":"99230915    ",
@@ -15,6 +19,7 @@ public class PaymentKicc {
 	String R01;
 	String R02;
 	String R03;
+	/** KICC 단말기 응답 필드 R04 (응답 코드. 0000 = 승인) */
 	String R04;
 	String R05;
 	String R06;
@@ -23,6 +28,7 @@ public class PaymentKicc {
 	String R09; //승인번호
 	String R10; 
 	String R11;// C:체크 카드 N:일반 카드
+	/** KICC 단말기 응답 필드 R12 (발급사 코드, CardCompanyName 으로 카드사명 변환) */
 	String R12;
 	String R13; //발급사명
 	String R14;
@@ -43,6 +49,7 @@ public class PaymentKicc {
 	String R29;
 	String R30;
 	String R31;
+	/** KICC 단말기 응답 필드 R32 (티머니 응답. 첫 바이트가 FF 면 거절) */
 	String R32;
 	String R33; //TM : 티머니, EB : 캐시비 구분
 	String R34;
@@ -50,28 +57,47 @@ public class PaymentKicc {
 	
 	
 	
+	/** 보안 ID */
 	String SecureID;
+	/** 보안 키 */
 	String SecureKey;
 	
+	/** 명령 (pay 등) */
 	String cmd;
+	/** 컬러 여부 */
 	String color;
+	/** 부수 */
 	String copies;
+	/** 양면 여부 */
 	String duplex;
+	/** 작업 종류 (print, copy 등) */
 	String jobType;
+	/** MAC 주소 */
 	String mac;
+	/** 모아찍기 수 */
 	String nUp;
+	/** 용지 크기 */
 	String paperSize;
+	/** 스캔 매수 */
 	String scanCount;
+	/** 단말기 시리얼 */
 	String serial;
+	/** 단말기 ID */
 	String terminalID;
+	/** 타임아웃 */
 	String timeOut;
+	/** 결제 금액 */
 	String totalAmount;
+	/** 총 매수 */
 	String totalPages;
 	
+	/** 처리 결과 */
 	String result;
 	
+	/** 사이버머니 카드번호 */
 	String userCard;
 	
+	/** 사이버머니 결제번호 (중복 결제 확인용) */
 	String cyberNo;
 	
 	

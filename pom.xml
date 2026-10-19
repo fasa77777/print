@@ -2,6 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+	<!-- Spring Boot 2.3.1 (Java 8). 라이브러리 버전은 대부분 이 부모 POM 이 정한다 -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -20,11 +21,13 @@
 	</properties>
 
 	<dependencies>
+		<!-- HTTP API (내장 Tomcat, JSON 변환) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!-- 개발 중 자동 재시작 (운영 jar 에는 포함되지 않음) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -34,6 +37,7 @@
 
 		<dependency>
 		
+		<!-- MSSQL JDBC 드라이버 -->
 		<groupId>com.microsoft.sqlserver</groupId>
 		
 		<artifactId>mssql-jdbc</artifactId>
@@ -41,11 +45,13 @@
 		<scope>runtime</scope>
 		
 		</dependency>
+<!-- DB 커넥션 풀 (DBCPConnectionMgr) -->
 <dependency>
    <groupId>commons-dbcp</groupId>
    <artifactId>commons-dbcp</artifactId>
    <version>1.4</version>
 </dependency>
+	<!-- 중계 서버로 보내는 JSON 생성·파싱 (co.kr.json) -->
 	<dependency>
 	    <groupId>com.googlecode.json-simple</groupId>
 	    <artifactId>json-simple</artifactId>
@@ -57,6 +63,7 @@
 		
 		<groupId>org.springframework.boot</groupId>
 		
+		<!-- spring-jdbc. DataSource 자동 설정은 JetworkServerApplication 에서 끈다 -->
 		<artifactId>spring-boot-starter-jdbc</artifactId>
 		
 		</dependency>
@@ -73,6 +80,7 @@
 		</dependency>
 	</dependencies>
 
+	<!-- 실행 가능한 jar 로 패키징 (mvnw package) -->
 	<build>
 		<plugins>
 			<plugin>

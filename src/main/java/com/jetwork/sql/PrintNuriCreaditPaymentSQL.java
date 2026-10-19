@@ -9,6 +9,10 @@ import com.jetwork.model.PrintNuriPay;
 /** 프린트누리 결제 기록 (/printnuri/printnuri/payment). */
 public class PrintNuriCreaditPaymentSQL {
 
+	/**
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 last_dt 를 갱신한다.
+	 * payType 이 Y 면 체크카드, 아니면 신용카드. payTypeTM 이 TM/EB 면 티머니/캐시비. 반환값은 쓰지 않는다.
+	 */
 	public String setPayment(PrintNuriPay payment) {
 		String payType = "Y".equals(payment.getPayType()) ? "체크카드" : "신용카드";
 		if ("TM".equals(payment.getPayTypeTM())) {

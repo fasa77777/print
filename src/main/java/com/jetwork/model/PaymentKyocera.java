@@ -1,28 +1,50 @@
 package com.jetwork.model;
 
+/**
+ * 교세라 사이버머니 결제 요청 (/printnuri/kyocera/postCyberMoneyPayment, 현재 비활성).
+ */
 public class PaymentKyocera {
+	/** 보안 ID */
 	String SecureID;
+	/** 보안 키 */
 	String SecureKey;
 	
+	/** 명령 (pay 등) */
 	String cmd;
+	/** 컬러 여부 (1 = 컬러, 2 = 흑백) */
 	String color;
+	/** 부수 */
 	String copies;
+	/** 양면 여부 */
 	String duplex;
+	/** 작업 종류 (print, copy 등) */
 	String jobType;
+	/** MAC 주소 */
 	String mac;
+	/** 모아찍기 수 */
 	String nUp;
+	/** 용지 크기 */
 	String paperSize;
+	/** 스캔 매수 */
 	String scanCount;
+	/** 단말기 시리얼 */
 	String serial;
+	/** 단말기 ID */
 	String terminalID;
+	/** 타임아웃 */
 	String timeOut;
+	/** 결제 금액 (따옴표가 붙어 올 수 있음) */
 	String totalAmount;
+	/** 총 매수 */
 	String totalPages;
 	
+	/** 처리 결과 */
 	String result;
 	
+	/** 사이버머니 카드번호 */
 	String userCard;
 	
+	/** 사이버머니 결제번호 (중복 결제 확인용) */
 	String cyberNo;
 
 	public String getSecureID() {

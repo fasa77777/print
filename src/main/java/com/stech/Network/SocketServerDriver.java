@@ -101,6 +101,7 @@ public class SocketServerDriver implements Runnable {
 	@SuppressWarnings("static-access")
 	private void handle(Socket socket) throws Exception {
                      System.out.println("New Terminal connected  10020");
+                     // 1. 단말기가 보낸 데이터를 최대 1000바이트 읽는다 (10초 안에 안 오면 SocketTimeoutException)
                      InputStream is = socket.getInputStream();
 
                      byte[]rcvData  = new byte[1000];
@@ -112,11 +113,13 @@ public class SocketServerDriver implements Runnable {
                      System.out.println("[[데이터 받기 성공]]: " + message);
 
                      System.out.println(socket.getInetAddress().toString());
+          			// 2. 단말기 IP 를 기억해 둔다. Xerox 결제 API 가 이 IP 의 10000번 포트로 결제 요청을 보낸다
           			String [] ss = socket.getInetAddress().toString().split("/");
           			System.out.println("["+ss[1]+"]");
           			JetworkServerApplication.TerminalIP = ss[1];
           			String newString = new String(rcvData, "EUC-KR");
          			System.out.println(Arrays.toString(rcvData));
+         			// 3. 헤더를 1바이트씩 16진수로 찍어 본다 (로그용): [0]=STX, [1~2]=길이, [3]=순번, [4]=CMD, [5]=GCD, [6]=작업 코드
          			byte[]b_command = getbytes(rcvData,0,1);
          			StringBuffer stBuffer = new StringBuffer();
          	        for (int i = 0; i < b_command.length; i++) {
@@ -167,10 +170,12 @@ public class SocketServerDriver implements Runnable {
         	        System.out.println("6["+stBuffer.toString()+"]");
         	        String poli = stBuffer.toString();
         	 
+        	        // 4. 7번째 바이트(인덱스 6)가 작업 코드. 코드별로 처리가 나뉜다
         	        String ck= stBuffer.toString().trim();
         	        
         	        System.out.println("ck["+ck+"]");
         	        
+        	        // 02: 가격 정책 요청. 인덱스 44부터 10바이트가 단말기 ID. 서버 시작 후 처음 한 번만(chk2) 중계 서버에 정책을 요청한다
         	        if("02".equals(ck)) {
          	            byte[]b_command6 = getbytes(rcvData,6+38,10);
          	            stBuffer = new StringBuffer();
@@ -205,6 +210,7 @@ public class SocketServerDriver implements Runnable {
   	    			
   	 
          	            
+         	        // 09: 기타 전문. 읽기만 하고 처리하지 않는다 (1000바이트 버퍼에서 2000바이트를 읽으려 해 예외가 나고 접속이 닫힌다)
          	        }else if("09".equals(ck)) {
          	            byte[]b_command6 = getbytes(rcvData,6,2000);
          	            stBuffer = new StringBuffer();
@@ -258,6 +264,7 @@ public class SocketServerDriver implements Runnable {
 //         	            System.out.println("MS949 -> X-WINDOWS-949 : " + new String(stBuffer.toString().getBytes("MS949"), "X-WINDOWS-949"));
          	            
          	            System.out.println("ck========"+ck);
+         	        // 06: 사이버머니 카드 태그. 인덱스 8부터 4바이트가 카드번호(16진수). 중계 서버에 사이버머니 결제를 요청한다 (JSonForm2)
          	        }else if("06".equals(ck)) {
          	        	
          	        	System.out.println("사이버머니");
@@ -280,6 +287,11 @@ public class SocketServerDriver implements Runnable {
          	            JSonForm2 jf = new JSonForm2();
          				jf.setPaymentJson(stBuffer.toString());
          	            
+         	        // 04: 카드·티머니 결제 결과. 본문은 "S03=...;S10=...;R04=...;" 처럼 ';' 로 나뉜 텍스트다
+         	        //  - CANCEL 이 들어 있으면 취소
+         	        //  - R32 첫 바이트가 FF 면 티머니 거절, 아니면 티머니 승인 (JSonForm3)
+         	        //  - R04=0000 이면 카드 승인 (JSonForm), 7000~9999 면 거절
+         	        //  승인·거절이 정해지면 chk(승인 여부)와 chk1(결과 도착)을 바꿔 Xerox 결제 API 의 대기를 끝낸다
          	        }else if("04".equals(ck)) {
          	         //   byte[]b_command6 = MessageEvent.getbytes(rcvData,6,2000);
          	         //   stBuffer = new StringBuffer();
@@ -493,6 +505,7 @@ public class SocketServerDriver implements Runnable {
         	        
 	}
 
+	  	/** 문자열의 각 글자를 "%02X " 형식의 16진수로 바꾼다. 예) "AB" -> "41 42 " */
 	  public String stringToHex(String s) {
 		    String result = "";
 
@@ -503,6 +516,7 @@ public class SocketServerDriver implements Runnable {
 		    return result;
 	  }
 	  
+			/** src 의 offset 부터 length 바이트를 잘라 새 배열로 돌려준다. */
 		public static final byte[] getbytes(byte src[], int offset, int length){
 	        byte dest[] = new byte[length];
 	        System.arraycopy(src, offset, dest, 0, length);

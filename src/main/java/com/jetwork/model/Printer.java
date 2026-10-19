@@ -1,22 +1,42 @@
 package com.jetwork.model;
 
+/**
+ * 프린터 상태 정보 (/printnuri/postPrinter 요청 본문, printer 테이블).
+ */
 public class Printer {
+	/** 장치 ID */
 	String devid;
+	/** 설치 장소 */
 	String sitename;
+	/** 설명 (DB 컬럼 desc1) */
 	String desc;
+	/** 오류 메시지 */
 	String errmsg;
+	/** 모델명 */
 	String modelname;
+	/** 총 출력 매수 */
 	int total;
+	/** 흑백 출력 매수 */
 	int mono;
+	/** 컬러 출력 매수 */
 	int color;
+	/** 검정 토너 잔량 */
 	int black;
+	/** 청록 토너 잔량 */
 	int cyan;
+	/** 자홍 토너 잔량 */
 	int magenta;
+	/** 노랑 토너 잔량 */
 	int yellow;
+	/** 장치 상태 */
 	String devicestatus;
+	/** 프린터 상태 */
 	String printerstatus;
+	/** 덮개 상태 */
 	String coverstatus;
+	/** 프린터 시리얼 번호 (등록 여부 판단 기준) */
 	String serialnumber;
+	/** MAC 주소 */
 	String macaddr;
 	public String getDevid() {
 		return devid;
