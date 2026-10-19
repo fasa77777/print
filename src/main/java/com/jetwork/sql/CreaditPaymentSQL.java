@@ -34,12 +34,16 @@ public class CreaditPaymentSQL {
 			insertIfNotExistsToday(payment, payType, payment.getR09(), CardCompanyName.getCardName(payment.getR12()));
 		} else {
 			String r33 = CardPaymentLedger.trim(payment.getR33());
-			// 티머니·캐시비는 승인번호 대신 현재 시각(밀리초)을 기록한다.
+			// 교통카드 결제는 승인번호 대신 현재 시각(밀리초)을 기록한다.
 			String now = String.valueOf(Calendar.getInstance().getTimeInMillis());
 			if ("TM".equals(r33)) {
 				insert(payment, "티머니", now, "티머니");
 			} else if ("EB".equals(r33)) {
 				insert(payment, "캐시비", now, "캐시비");
+			} else {
+				// 티머니·캐시비가 아닌 교통카드(레일플러스 등)는 예전에는 기록 없이 버려졌다.
+				logger.info("기타 교통카드 결제 R33=" + r33);
+				insert(payment, "교통카드", now, "교통카드");
 			}
 		}
 		return "";
