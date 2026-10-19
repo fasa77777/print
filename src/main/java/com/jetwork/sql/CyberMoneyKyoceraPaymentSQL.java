@@ -65,6 +65,7 @@ public class CyberMoneyKyoceraPaymentSQL {
 
 			Integer after = CyberMoneyLedger.findBalance(conn, card);
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			System.out.println("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
 			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
 		} catch (Exception e) {

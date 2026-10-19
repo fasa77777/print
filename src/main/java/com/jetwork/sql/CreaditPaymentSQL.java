@@ -59,12 +59,14 @@ public class CreaditPaymentSQL {
 			conn.setAutoCommit(false);
 			if (CardPaymentLedger.existsToday(conn, paymentOk)) {
 				System.out.println("중복");
+				conn.commit();
 			} else {
 				CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
 						payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
 						payment.getTotalPages());
+				conn.commit();
+				CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			}
-			conn.commit();
 		} catch (Exception e) {
 			e.printStackTrace();
 			CyberMoneyLedger.rollbackQuietly(conn);
@@ -85,6 +87,7 @@ public class CreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
 					payment.getTotalPages());
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 		} catch (Exception e) {
 			e.printStackTrace();
 			CyberMoneyLedger.rollbackQuietly(conn);

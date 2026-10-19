@@ -89,7 +89,7 @@
 
 | 테이블 | 용도 | 코드에 나오는 컬럼 |
 |---|---|---|
-| `jw_terminal` | 결제 단말기 | `terminal_id`, `serial`, `fran_id`(3번째 컬럼), `agent_version`, `terminalVersion`, `update` |
+| `jw_terminal` | 결제 단말기 | `terminal_id`, `serial`, `fran_id`(3번째 컬럼), `agent_version`, `terminalVersion`, `update`, `last_dt`(마지막 결제 시각) |
 | `jw_franchise` | 가맹점(매장) | `fran_id`, `fran_name` |
 | `jw_paper` | 단말기별 용지 가격 | `terminalID`, `paper_size`, `paper_colorYN`, `paper_price` |
 | `jw_payment` | 결제 내역 | `id`, `terminal_id`, `payment_pay`, `payment_type`, `payment_paperType`, `payment_colorYN`, `payment_ok`(승인번호), `payment_printType`, `payment_cardName`, `payment_totalCount`, `userCard`, `cyberNo`, `reg_date` |
@@ -139,6 +139,7 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 소켓 서버가 단말기를 하나씩 처리 | 접속 하나를 중계 서버 HTTP 요청까지 끝내야 다음 단말기를 받았다. 이제 작업 스레드 50개가 동시에 처리하고, 밀리면 1000개까지 줄을 세운다 |
 | 스레드 간 공유 상태가 안 보이던 문제 | 소켓 스레드가 바꾼 결제 결과(`chk`, `chk1`)를 HTTP 스레드가 못 볼 수 있었다. 공유 변수를 `volatile` 로 바꿨다 |
 | 카드사명 없는 결제 | 신용·체크카드 결제에서 발급사 코드가 없거나 목록에 없으면 카드사명을 빈 값 대신 `해외카드` 로 기록한다 (`CardCompanyName.getCardName`). 티머니·캐시비는 그대로 둔다 |
+| 단말기 마지막 결제 시각 | 결제 내역(`jw_payment`)이 정상 등록되면 그 단말기의 `jw_terminal.last_dt` 를 현재 시각으로 갱신한다. 결제 기록을 먼저 커밋한 뒤 갱신하므로, 갱신이 실패해도 결제 기록은 남는다 |
 | 기타 교통카드 결제 누락 | `/postCraditPayment` 에서 카드가 아니면서 티머니(TM)·캐시비(EB)도 아닌 교통카드 결제는 기록 없이 버려졌다. 이제 결제 종류·카드사명 모두 `교통카드` 로 기록한다 |
 | 티머니 판정 누락 | `JSonForm` 이 `R33=TM` 처럼 접두어가 붙은 값을 보내 티머니 결제가 신용카드로 기록됐다. 접두어를 떼고 보낸다 |
 | 단말기 소켓 무한 대기 | 소켓 서버가 한 번에 한 단말기씩 처리하는데 읽기 타임아웃이 없어, 데이터를 안 보내는 단말기 하나가 전체를 막을 수 있었다. 10초 타임아웃을 넣었다 |

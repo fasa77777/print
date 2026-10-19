@@ -50,6 +50,25 @@ final class CardPaymentLedger {
 		}
 	}
 
+	/**
+	 * 단말기의 마지막 결제 시각(jw_terminal.last_dt)을 지금으로 갱신하고 커밋한다.
+	 * 결제 기록을 커밋한 "뒤에" 호출한다. 여기서 실패해도 이미 커밋된 결제 기록에는 영향이 없고 로그만 남긴다.
+	 */
+	static void markLastPayment(Connection conn, String terminalID) {
+		try (PreparedStatement ps = conn.prepareStatement(
+				"UPDATE [dbo].[jw_terminal] SET [last_dt] = getdate() WHERE [terminal_id] = ?")) {
+			ps.setString(1, terminalID);
+			int updated = ps.executeUpdate();
+			conn.commit();
+			if (updated == 0) {
+				System.out.println("last_dt 갱신 대상 단말기 없음 terminalID=" + terminalID);
+			}
+		} catch (Exception e) {
+			System.err.println("[DB] last_dt 갱신 실패 terminalID=" + terminalID + " : " + e.getMessage());
+			CyberMoneyLedger.rollbackQuietly(conn);
+		}
+	}
+
 	static String trim(String s) {
 		return s == null ? "" : s.trim();
 	}

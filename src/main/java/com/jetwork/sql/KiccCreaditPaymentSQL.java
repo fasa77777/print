@@ -40,6 +40,7 @@ public class KiccCreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), payment.getR09(), payment.getJobType(),
 					cardName, null);
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 		} catch (Exception e) {
 			e.printStackTrace();
 			CyberMoneyLedger.rollbackQuietly(conn);

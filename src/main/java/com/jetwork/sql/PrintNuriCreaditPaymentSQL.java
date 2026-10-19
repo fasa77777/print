@@ -33,6 +33,7 @@ public class PrintNuriCreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), payment.getPayOK(), "print",
 					cardName, payment.getCount());
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 		} catch (Exception e) {
 			e.printStackTrace();
 			CyberMoneyLedger.rollbackQuietly(conn);
