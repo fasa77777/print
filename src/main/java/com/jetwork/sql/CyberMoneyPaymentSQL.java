@@ -23,7 +23,7 @@ public class CyberMoneyPaymentSQL {
 	 * 2. 같은 결제번호(cyberNo)로 이미 처리됐으면 DUPLICATE (차감하지 않음)
 	 * 3. 처음 보는 카드면 0원으로 등록하고 NO_CARD
 	 * 4. 잔액이 금액보다 적으면 INSUFFICIENT (차감하지 않음, balance = 잔액 - 금액)
-	 * 5. 차감하고 jw_payment 에 기록 후 OK (처리 후 잔액 포함). 잔액과 금액이 같으면 0원으로 결제된다
+	 * 5. 차감하고 jw_payment 에 기록, 단말기 last_dt 갱신 후 OK (처리 후 잔액 포함). 잔액과 금액이 같으면 0원으로 결제된다
 	 */
 	public CyberMoneyResult setPayment(PaymentKicc payment) {
 		String card = payment.getUserCard();
@@ -75,6 +75,7 @@ public class CyberMoneyPaymentSQL {
 
 			Integer after = CyberMoneyLedger.findBalance(conn, card);
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			logger.info("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
 			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
 		} catch (Exception e) {

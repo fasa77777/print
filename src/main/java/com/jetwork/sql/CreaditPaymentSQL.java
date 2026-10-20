@@ -29,10 +29,11 @@ public class CreaditPaymentSQL {
 	}
 
 	/**
-	 * 결제 한 건을 jw_payment 에 기록한다.
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
 	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
 	 *   카드사명을 모르면 해외카드
 	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 나머지는 교통카드로 기록
+	 * 기록하면 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다. (중복이라 기록하지 않으면 갱신하지 않음)
 	 */
 	public RecordStatus setPayment(PaymentKicc payment) {
 		String r11 = payment.getR11();
@@ -90,6 +91,7 @@ public class CreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
 					payment.getTotalPages());
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
 			logger.error("CreaditPaymentSQL 처리 중 오류", e);
@@ -113,6 +115,7 @@ public class CreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
 					payment.getTotalPages());
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
 			logger.error("CreaditPaymentSQL 처리 중 오류", e);

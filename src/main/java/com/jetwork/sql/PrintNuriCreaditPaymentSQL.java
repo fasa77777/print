@@ -16,7 +16,7 @@ public class PrintNuriCreaditPaymentSQL {
 	private static final Logger logger = LoggerFactory.getLogger(PrintNuriCreaditPaymentSQL.class);
 
 	/**
-	 * 결제 한 건을 jw_payment 에 기록한다.
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
 	 * payType 이 Y 면 체크카드, 아니면 신용카드. payTypeTM 이 TM/EB 면 티머니/캐시비.
 	 */
 	public RecordStatus setPayment(PrintNuriPay payment) {
@@ -43,6 +43,7 @@ public class PrintNuriCreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), payment.getPayOK(), "print",
 					cardName, payment.getCount());
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
 			logger.error("PrintNuriCreaditPaymentSQL 처리 중 오류", e);

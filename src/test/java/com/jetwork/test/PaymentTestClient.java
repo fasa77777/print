@@ -147,6 +147,7 @@ public class PaymentTestClient {
 		System.out.println();
 		System.out.println("결제 기록 확인 SQL:");
 		System.out.println("  SELECT TOP 20 payment_type, payment_cardName, payment_pay, payment_ok, reg_date FROM jw_payment WHERE terminal_id = '" + terminalID + "' ORDER BY reg_date DESC;");
+		System.out.println("  SELECT terminal_id, last_dt FROM jw_terminal WHERE terminal_id = '" + terminalID + "';");
 		System.out.println("테스트 기록 지우기:");
 		System.out.println("  DELETE FROM jw_payment WHERE terminal_id = '" + terminalID + "' AND reg_date >= CAST(GETDATE() AS DATE);");
 	}

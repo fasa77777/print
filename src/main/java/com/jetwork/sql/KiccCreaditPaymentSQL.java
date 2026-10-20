@@ -16,7 +16,7 @@ public class KiccCreaditPaymentSQL {
 	private static final Logger logger = LoggerFactory.getLogger(KiccCreaditPaymentSQL.class);
 
 	/**
-	 * 결제 한 건을 jw_payment 에 기록한다.
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
 	 * R10 이 Y 면 체크카드, 아니면 신용카드. R33 이 TM/EB 면 티머니/캐시비.
 	 */
 	public RecordStatus setPayment(PaymentCreaditKicc payment) {
@@ -44,6 +44,7 @@ public class KiccCreaditPaymentSQL {
 					payment.getPaperSize(), payment.getColor(), payment.getR09(), payment.getJobType(),
 					cardName, null);
 			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
 			logger.error("KiccCreaditPaymentSQL 처리 중 오류", e);
