@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,6 +11,8 @@ import com.jetwork.bin.ConnectionPool;
 
 /** 같은 날 같은 승인번호로 카드 결제가 두 번 기록되지 않게 확인한다. */
 public class PaymentCK {
+
+	private static final Logger logger = LoggerFactory.getLogger(PaymentCK.class);
 
 	/**
 	 * 오늘 같은 승인번호의 결제 내역이 없으면 true.
@@ -23,7 +28,7 @@ public class PaymentCK {
 		try {
 			notExists = !CardPaymentLedger.existsToday(conn, paymentOK);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("PaymentCK 처리 중 오류", e);
 		} finally {
 			dbcp.freeConnection(conn);
 		}
@@ -57,7 +62,7 @@ public class PaymentCK {
 				}
 			}
 			if (lastId != null) {
-				System.out.println("중복삭제 ==== " + lastId);
+				logger.info("오늘 같은 승인번호 결제 중복 삭제 id={} R09={}", lastId, paymentOK);
 				try (PreparedStatement ps = conn.prepareStatement("DELETE FROM [dbo].[jw_payment] WHERE id = ?")) {
 					ps.setString(1, lastId);
 					ps.executeUpdate();
@@ -65,7 +70,7 @@ public class PaymentCK {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("PaymentCK 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);

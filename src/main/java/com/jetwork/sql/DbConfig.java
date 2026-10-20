@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -16,6 +19,8 @@ import java.util.Properties;
  * db.properties 는 src/main/resources/db.properties.example 을 복사해서 만든다.
  */
 public final class DbConfig {
+
+	private static final Logger logger = LoggerFactory.getLogger(DbConfig.class);
 
 	private static final String RESOURCE = "/db.properties";
 
@@ -36,7 +41,7 @@ public final class DbConfig {
 				props.load(is);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("DbConfig 처리 중 오류", e);
 		}
 
 		url = pick("DB_URL", props.getProperty("db.url"));
@@ -46,7 +51,7 @@ public final class DbConfig {
 		poolMaxIdle = intValue(props.getProperty("db.pool.maxIdle"), DEFAULT_POOL_MAX_IDLE);
 
 		if (url == null || url.isEmpty()) {
-			System.err.println("[DbConfig] DB 접속 정보가 없습니다. "
+			logger.warn("[DbConfig] DB 접속 정보가 없습니다. "
 					+ "src/main/resources/db.properties.example 을 db.properties 로 복사해서 값을 채우거나, "
 					+ "환경변수 DB_URL / DB_USERNAME / DB_PASSWORD 를 설정하세요.");
 		}
@@ -71,7 +76,7 @@ public final class DbConfig {
 			int v = Integer.parseInt(value.trim());
 			return v > 0 ? v : defaultValue;
 		} catch (NumberFormatException e) {
-			System.err.println("[DbConfig] 숫자가 아닌 풀 설정값 무시: " + value);
+			logger.warn("[DbConfig] 숫자가 아닌 풀 설정값 무시: " + value);
 			return defaultValue;
 		}
 	}

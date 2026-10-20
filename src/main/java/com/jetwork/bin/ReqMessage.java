@@ -7,6 +7,8 @@ package com.jetwork.bin;
  * 본문과 작업 코드는 하위 클래스(예: ReqCharge)가 정한다.
  */
 public abstract class ReqMessage {
+
+	private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ReqMessage.class);
 	private byte stx = 0x02;
 	private short cmd = 0xFB;
 	/** 전문 순번. 보낼 때마다 1씩 늘고 255 다음은 1 이다 */
@@ -52,16 +54,11 @@ public abstract class ReqMessage {
 	
 	/** 디버깅용: 전문을 16진수로 출력한다. */
 	private void printMessage(byte[] strBytes) {
-		System.out.print("<<");
-		
-		for(byte b : strBytes) {
-			System.out.print("[");
-			System.out.print(String.format("%02X", b&0xff));
-			System.out.print("]");
+		StringBuilder sb = new StringBuilder("<<");
+		for (byte b : strBytes) {
+			sb.append('[').append(String.format("%02X", b & 0xff)).append(']');
 		}
-		
-		System.out.println(">>");
-		
+		logger.debug(sb.append(">>").toString());
 	}
 	
 	/** 전문 끝 2바이트에 CRC-16 값을 채우고, 길이 필드도 실제 길이로 다시 쓴다. */

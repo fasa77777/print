@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 
 import com.jetwork.bin.ConnectionPool;
@@ -11,6 +14,8 @@ import co.kr.up.util.Mask;
 
 /** 사이버머니 결제 (/stech/postCyberMoneyPayment). */
 public class CyberMoneyPaymentSQL {
+
+	private static final Logger logger = LoggerFactory.getLogger(CyberMoneyPaymentSQL.class);
 
 	/**
 	 * 사이버머니로 결제한다.
@@ -24,7 +29,7 @@ public class CyberMoneyPaymentSQL {
 		String card = payment.getUserCard();
 		Integer amount = CyberMoneyLedger.parseMoney(payment.getTotalAmount());
 		if (amount == null || amount < 0) {
-			System.out.println("사이버머니 결제 금액 오류: [" + payment.getTotalAmount() + "]");
+			logger.info("사이버머니 결제 금액 오류: [" + payment.getTotalAmount() + "]");
 			return new CyberMoneyResult(Status.ERROR, 0);
 		}
 
@@ -53,7 +58,7 @@ public class CyberMoneyPaymentSQL {
 
 			if (!CyberMoneyLedger.deduct(conn, card, amount)) {
 				conn.commit();
-				System.out.println("사이버머니 잔액 부족 card=" + Mask.card(card) + " balance=" + balance + " amount=" + amount);
+				logger.info("사이버머니 잔액 부족 card=" + Mask.card(card) + " balance=" + balance + " amount=" + amount);
 				return new CyberMoneyResult(Status.INSUFFICIENT, balance);
 			}
 
@@ -65,10 +70,10 @@ public class CyberMoneyPaymentSQL {
 			Integer after = CyberMoneyLedger.findBalance(conn, card);
 			conn.commit();
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
-			System.out.println("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
+			logger.info("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
 			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("CyberMoneyPaymentSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return new CyberMoneyResult(Status.ERROR, 0);
 		} finally {

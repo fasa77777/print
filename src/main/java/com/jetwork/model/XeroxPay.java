@@ -17,6 +17,15 @@ public class XeroxPay {
 	String color;
 	/** 용지 크기 */
 	String paperSize;
+	/** 결제할 단말기 ID (선택). 보내면 그 단말기로 결제를 요청한다. 없으면 요청 IP 의 단말기로 보낸다 */
+	String terminalID;
+
+	public String getTerminalID() {
+		return terminalID;
+	}
+	public void setTerminalID(String terminalID) {
+		this.terminalID = terminalID;
+	}
 	
 	
 	public String getCmd() {

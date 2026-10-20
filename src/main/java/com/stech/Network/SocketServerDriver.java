@@ -13,7 +13,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.jetwork.bin.JetworkServerApplication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.jetwork.bin.TerminalRegistry;
+import com.jetwork.bin.TerminalState;
 
 import co.kr.json.JSonForm;
 import co.kr.json.JSonForm1;
@@ -21,6 +25,8 @@ import co.kr.json.JSonForm2;
 import co.kr.json.JSonForm3;
 import co.kr.up.util.Bytes;
 import co.kr.up.util.HexUtils;
+import co.kr.up.util.Mask;
+
 /**
  * 결제 단말기 소켓 서버 (포트 10020).
  *
@@ -28,6 +34,8 @@ import co.kr.up.util.HexUtils;
  * 작업 스레드 풀에서 단말기마다 따로 한다. 한 단말기 처리가 느려도 다른 단말기는 기다리지 않는다.
  */
 public class SocketServerDriver implements Runnable {
+
+	private static final Logger logger = LoggerFactory.getLogger(SocketServerDriver.class);
 
 	private static final int PORT = 10020;
 	/** 동시에 처리할 수 있는 단말기 접속 수 */
@@ -54,14 +62,14 @@ public class SocketServerDriver implements Runnable {
 
 	public void run() {
 		try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-			System.out.println("Server is listening on port " + PORT + " (worker threads " + WORKER_THREADS + ")");
+			logger.info("단말기 소켓 서버 시작 port={} (작업 스레드 {}개)", PORT, WORKER_THREADS);
 
 			while (true) {
 				final Socket socket;
 				try {
 					socket = serverSocket.accept();
 				} catch (IOException e) {
-					System.out.println("accept 실패: " + e);
+					logger.warn("단말기 접속 받기 실패: {}", e.toString());
 					continue;
 				}
 				workers.execute(new Runnable() {
@@ -72,8 +80,7 @@ public class SocketServerDriver implements Runnable {
 				});
 			}
 		} catch (IOException ex) {
-			System.out.println("Server exception: " + ex.getMessage());
-			ex.printStackTrace();
+			logger.error("단말기 소켓 서버 종료 (포트 " + PORT + " 사용 불가?)", ex);
 		}
 	}
 
@@ -83,7 +90,7 @@ public class SocketServerDriver implements Runnable {
 			socket.setSoTimeout(READ_TIMEOUT_MILLIS);
 			handle(socket);
 		} catch (Exception e) {
-			System.out.println("Socket close" + e);
+			logger.warn("단말기 전문 처리 중 오류 {} : {}", socket.getInetAddress().getHostAddress(), e.toString());
 		} finally {
 			try {
 				socket.close();
@@ -145,117 +152,108 @@ public class SocketServerDriver implements Runnable {
 
 	/** 단말기가 보낸 전문 한 건을 해석해서 처리한다. */
 	private void handle(Socket socket) throws Exception {
+		String ip = socket.getInetAddress().getHostAddress();
+
 		// 1. 전문을 끝까지 읽는다
 		byte[] rcvData = readMessage(socket);
 		if (rcvData.length == 0) {
-			System.out.println("단말기 접속 후 데이터 없이 끊김 " + socket.getInetAddress().getHostAddress());
+			logger.debug("단말기 접속 후 데이터 없이 끊김 {}", ip);
 			return;
 		}
-		String message = new String(rcvData, "UTF-8");
-		System.out.println("[[데이터 받기 성공]] " + rcvData.length + " bytes from " + socket.getInetAddress().getHostAddress());
 
-		// 2. 단말기 IP 를 기억해 둔다. Xerox 결제 API 가 이 IP 의 10000번 포트로 결제 요청을 보낸다
-		JetworkServerApplication.TerminalIP = socket.getInetAddress().getHostAddress();
+		// 2. 이 단말기(IP)의 상태를 가져온다. 단말기 ID·진행 중인 결제·결과는 단말기마다 따로 관리한다
+		TerminalState terminal = TerminalRegistry.connected(ip);
 
 		// 3. 헤더: [0]=STX, [1~2]=길이, [3]=순번, [4]=CMD, [5]=GCD, [6]=작업 코드
 		if (rcvData.length < 7) {
-			System.out.println("헤더보다 짧은 전문 무시: " + Arrays.toString(rcvData));
+			logger.warn("헤더보다 짧은 전문 무시 {} : {}", terminal, Arrays.toString(rcvData));
 			return;
 		}
 		String ck = Bytes.toHexString(rcvData[6]).trim();
-		System.out.println("작업 코드 [" + ck + "]");
+		logger.info("전문 수신 {} 작업코드={} {}bytes", terminal, ck, rcvData.length);
+		logger.debug("전문 원본 {}", Arrays.toString(rcvData));
 
 		if ("02".equals(ck)) {
 			// 02: 가격 정책 요청. 인덱스 44부터 10바이트가 단말기 ID.
-			// 서버 시작 후 처음 한 번만(chk2) 중계 서버에 정책을 요청한다
+			// 단말기마다 처음 한 번(성공할 때까지) 중계 서버에 가격 정책을 요청한다
 			if (rcvData.length < 44 + 10) {
-				System.out.println("02 전문이 짧아 단말기 ID 를 읽을 수 없음: " + rcvData.length + " bytes");
+				logger.warn("02 전문이 짧아 단말기 ID 를 읽을 수 없음 {} {}bytes", terminal, rcvData.length);
 				return;
 			}
 			StringBuffer stBuffer = new StringBuffer();
 			for (byte b : getbytes(rcvData, 44, 10)) {
 				stBuffer.append(Bytes.UnitoStr(HexUtils.toHexString(b)));
 			}
-			String terminalID = stBuffer.toString().trim();
-			System.out.println("[" + terminalID + "]");
-			JetworkServerApplication.terID = terminalID;
-			if (JetworkServerApplication.chk2) {
-				new JSonForm1().setPolicyJson(terminalID);
+			terminal.setTerminalID(stBuffer.toString().trim());
+			if (!terminal.isPolicyRequested()) {
+				new JSonForm1().setPolicyJson(terminal);
 			}
 
 		} else if ("09".equals(ck)) {
 			// 09: 기타 전문. 처리하지 않는다
-			System.out.println("09 전문 수신 (처리 안 함) " + rcvData.length + " bytes");
 
 		} else if ("06".equals(ck)) {
-			// 06: 사이버머니 카드 태그. 인덱스 8부터 4바이트가 카드번호(16진수). 중계 서버에 사이버머니 결제를 요청한다
+			// 06: 사이버머니 카드 태그. 인덱스 8부터 4바이트가 카드번호(16진수).
+			// 이 단말기에서 진행 중인 출력 작업 금액으로 중계 서버에 사이버머니 결제를 요청한다 (JSonForm2)
 			if (rcvData.length < 8 + 4) {
-				System.out.println("06 전문이 짧아 카드번호를 읽을 수 없음: " + rcvData.length + " bytes");
+				logger.warn("06 전문이 짧아 카드번호를 읽을 수 없음 {} {}bytes", terminal, rcvData.length);
 				return;
 			}
 			StringBuffer stBuffer = new StringBuffer();
 			for (byte b : getbytes(rcvData, 8, 4)) {
 				stBuffer.append(HexUtils.toHexString(b));
 			}
-			System.out.println("사이버머니 카드 : " + co.kr.up.util.Mask.card(stBuffer.toString()));
-			new JSonForm2().setPaymentJson(stBuffer.toString());
+			logger.info("사이버머니 카드 {} card={}", terminal, Mask.card(stBuffer.toString()));
+			new JSonForm2().setPaymentJson(terminal, stBuffer.toString());
 
 		} else if ("04".equals(ck)) {
-			handlePaymentResult(message);
+			handlePaymentResult(terminal, new String(rcvData, "UTF-8"));
 		}
 	}
 
 	/**
 	 * 04: 카드·티머니 결제 결과. 본문은 "S03=...;S10=...;R04=...;" 처럼 ';' 로 나뉜 "키=값" 목록이다.
 	 *  - CANCEL 이 들어 있으면 취소
-	 *  - R32 값이 있고 첫 글자가 FF 면 티머니 거절, 다른 값이면 티머니 승인 (JSonForm3). 빈 값이면 티머니가 아니다
-	 *  - R04=0000 이면 카드 승인 (JSonForm), 그 밖의 값이면 거절
-	 * 승인·거절이 정해지면 chk(승인 여부)와 chk1(결과 도착)을 바꿔 Xerox 결제 API 의 대기를 끝낸다.
+	 *  - R32 값이 있으면 티머니 결과다. 첫 글자가 FF 면 거절, 아니면 승인 (JSonForm3).
+	 *    티머니 결과에서는 R04 를 보지 않는다 (카드 결제로 한 번 더 기록되지 않게)
+	 *  - 티머니가 아니면 R04=0000 이 카드 승인 (JSonForm), 그 밖의 값은 거절
+	 * 승인·거절이 정해지면 그 단말기의 결제 결과로 기록해서, 기다리던 Xerox 결제 API 를 깨운다.
 	 */
-	private void handlePaymentResult(String message) {
+	private void handlePaymentResult(TerminalState terminal, String message) {
+		String[] sD = message.split(";");
+		java.util.Map<String, String> f = co.kr.json.JSonForm.toMap(sD);
+
 		if (message.contains("CANCEL")) {
-			JetworkServerApplication.chk = false;
-			JetworkServerApplication.chk1 = true;
-			System.out.println("취소");
+			terminal.setResult(false);
+			logger.info("결제 취소 {}", terminal);
+			return;
 		}
 
-		String[] sD = message.split(";");
-		for (String field : sD) {
-			int eq = field.indexOf('=');
-			if (eq < 3) {
-				continue;
+		String r32 = f.get("R32");
+		if (r32 != null && !r32.isEmpty()) {
+			if (String.format("%02X", (int) r32.charAt(0)).startsWith("FF")) {
+				terminal.setResult(false);
+				logger.info("티머니 승인 거절 {}", terminal);
+			} else {
+				terminal.setResult(true);
+				logger.info("티머니 승인 {} 금액={}", terminal, f.get("S10"));
+				new JSonForm3().setPaymentJson(terminal, sD);
 			}
-			String key = field.substring(eq - 3, eq);
-			String value = field.substring(eq + 1);
+			return;
+		}
 
-			if ("R32".equals(key)) {
-				String v = value.trim();
-				if (v.isEmpty()) {
-					continue;
-				}
-				if (String.format("%02X", (int) v.charAt(0)).startsWith("FF")) {
-					JetworkServerApplication.chk = false;
-					JetworkServerApplication.chk1 = true;
-					System.out.println("티머니 승인 거절");
-				} else {
-					JetworkServerApplication.chk = true;
-					JetworkServerApplication.chk1 = true;
-					System.out.println("티머니 승인");
-					new JSonForm3().setPaymentJson();
-				}
-			} else if ("R04".equals(key)) {
-				String code = value.trim();
-				if ("0000".equals(code)) {
-					JetworkServerApplication.chk = true;
-					JetworkServerApplication.chk1 = true;
-					System.out.println("카드 승인");
-					new JSonForm().setPaymentJson(sD);
-				} else if (!code.isEmpty()) {
-					JetworkServerApplication.chk = false;
-					JetworkServerApplication.chk1 = true;
-					System.out.println("카드 승인 거절 R04=" + code);
-				}
-			}
+		String code = f.get("R04");
+		if (code == null || code.isEmpty()) {
+			logger.warn("결제 결과 코드(R04)가 없는 04 전문 {}", terminal);
+			return;
+		}
+		if ("0000".equals(code)) {
+			terminal.setResult(true);
+			logger.info("카드 승인 {} 금액={} 승인번호={}", terminal, f.get("S10"), f.get("R09"));
+			new JSonForm().setPaymentJson(sD);
+		} else {
+			terminal.setResult(false);
+			logger.info("카드 승인 거절 {} R04={}", terminal, code);
 		}
 	}
 

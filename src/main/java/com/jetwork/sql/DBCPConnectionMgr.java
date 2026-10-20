@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -20,6 +23,8 @@ import org.apache.commons.pool.impl.GenericObjectPool;
  * 다 쓰면 freeConnection(...) 또는 close() 로 반납한다. (close() 하면 실제로 끊지 않고 풀로 돌아간다)
  */
 public class DBCPConnectionMgr {
+
+	private static final Logger logger = LoggerFactory.getLogger(DBCPConnectionMgr.class);
 
 	private static final String JDBC_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 	private static final String POOL_NAME = "jetwork";
@@ -64,8 +69,7 @@ public class DBCPConnectionMgr {
 					DbConfig.getPassword());
 			ready = true;
 		} catch (Exception ex) {
-			System.err.println("[DB] 커넥션 풀 생성 실패: " + ex);
-			ex.printStackTrace();
+			logger.error("[DB] 커넥션 풀 생성 실패", ex);
 		}
 	}
 
@@ -76,13 +80,13 @@ public class DBCPConnectionMgr {
 	 */
 	public Connection getConnection() {
 		if (!ready) {
-			System.err.println("[DB] 커넥션 풀이 준비되지 않았습니다. DB 설정(db.properties)을 확인하세요.");
+			logger.warn("[DB] 커넥션 풀이 준비되지 않았습니다. DB 설정(db.properties)을 확인하세요.");
 			return null;
 		}
 		try {
 			return DriverManager.getConnection(POOL_URL);
 		} catch (SQLException ex) {
-			System.err.println("[DB] 커넥션을 가져오지 못했습니다: " + ex.getMessage());
+			logger.warn("[DB] 커넥션을 가져오지 못했습니다: " + ex.getMessage());
 			return null;
 		}
 	}
@@ -115,7 +119,7 @@ public class DBCPConnectionMgr {
 
 		PoolingDriver driver = new PoolingDriver();
 		driver.registerPool(POOL_NAME, connectionPool);
-		System.out.println("[DB] 커넥션 풀 등록 완료 (최대 " + DbConfig.getPoolMaxActive() + "개, 유휴 " + DbConfig.getPoolMaxIdle() + "개)");
+		logger.info("[DB] 커넥션 풀 등록 완료 (최대 " + DbConfig.getPoolMaxActive() + "개, 유휴 " + DbConfig.getPoolMaxIdle() + "개)");
 	}
 
 	/** URL 에 DEFAULT_URL_OPTIONS 의 옵션이 없으면 기본값을 붙인다. (URL 에 이미 있으면 그 값을 쓴다) */
@@ -143,7 +147,7 @@ public class DBCPConnectionMgr {
             if (pstmt != null) pstmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
     public void freeConnection(Connection con, Statement stmt, ResultSet rs) {
@@ -152,7 +156,7 @@ public class DBCPConnectionMgr {
             if (stmt != null) stmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
    
@@ -161,7 +165,7 @@ public class DBCPConnectionMgr {
             if (pstmt != null) pstmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }   
     public void freeConnection(Connection con, Statement stmt) {
@@ -169,7 +173,7 @@ public class DBCPConnectionMgr {
             if (stmt != null) stmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
    
@@ -177,7 +181,7 @@ public class DBCPConnectionMgr {
         try {
             if (con != null) con.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
    
@@ -185,7 +189,7 @@ public class DBCPConnectionMgr {
         try {
             if (stmt != null) stmt.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
    
@@ -193,14 +197,14 @@ public class DBCPConnectionMgr {
         try {
             if (pstmt != null) pstmt.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }
     public void freeConnection(ResultSet rs) {
         try {
             if (rs != null) rs.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("DBCPConnectionMgr 처리 중 오류", e);
         }
     }   
    

@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,6 +11,8 @@ import com.jetwork.bin.ConnectionPool;
 
 /** 사이버머니 잔액 조회 (/stech/postCyberMoney). 처음 보는 카드는 0원으로 등록한다. */
 public class UserCyberMoneySQL {
+
+	private static final Logger logger = LoggerFactory.getLogger(UserCyberMoneySQL.class);
 
 	/**
 	 * @param terminalID 가맹점을 찾을 단말기 ID (컨트롤러는 요청의 userID 를 넘긴다)
@@ -41,7 +46,7 @@ public class UserCyberMoneySQL {
 			conn.commit();
 			return money;
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("UserCyberMoneySQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return "";
 		} finally {

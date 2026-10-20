@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,6 +14,8 @@ import com.jetwork.model.PriceResult;
 
 /** 단말기별 용지 가격 조회와 에이전트 버전 갱신 (/stech/printnuri/pricepolicy). */
 public class PaperPriceSQL {
+
+	private static final Logger logger = LoggerFactory.getLogger(PaperPriceSQL.class);
 
 	/** 단말기의 용지 가격 목록을 돌려주고, 단말기 에이전트 버전을 갱신한다. 오류면 빈 목록. */
 	public Vector<PriceResult> getPrice(A4Terminal terminal) {
@@ -45,7 +50,7 @@ public class PaperPriceSQL {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("PaperPriceSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);
