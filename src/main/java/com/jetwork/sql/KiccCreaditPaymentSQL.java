@@ -21,9 +21,10 @@ public class KiccCreaditPaymentSQL {
 	 */
 	public RecordStatus setPayment(PaymentCreaditKicc payment) {
 		String payType = "Y".equals(payment.getR10()) ? "체크카드" : "신용카드";
-		if ("TM".equals(payment.getR33())) {
+		String r33 = CardPaymentLedger.trim(payment.getR33()); // "TM " 처럼 공백이 붙어 와도 구분되게
+		if ("TM".equals(r33)) {
 			payType = "티머니";
-		} else if ("EB".equals(payment.getR33())) {
+		} else if ("EB".equals(r33)) {
 			payType = "캐시비";
 		}
 

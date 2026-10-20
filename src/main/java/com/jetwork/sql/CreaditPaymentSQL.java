@@ -16,14 +16,6 @@ public class CreaditPaymentSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(CreaditPaymentSQL.class);
 
-	/**
-	 * 결제 한 건을 jw_payment 에 기록한다.
-	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
-	 *   카드사명을 모르면 해외카드
-	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 나머지는 교통카드로 기록
-	 * jw_terminal 에 없는 단말기면 기록하지 않고 NO_TERMINAL 을 돌려준다.
-	 * 기록 후 단말기의 last_dt 를 갱신한다.
-	 */
 	/** 승인번호별 잠금. 승인번호를 해시해서 256개 잠금 중 하나를 쓴다 (메모리가 늘지 않게) */
 	private static final Object[] APPROVAL_LOCKS = new Object[256];
 	static {
@@ -36,6 +28,14 @@ public class CreaditPaymentSQL {
 		return APPROVAL_LOCKS[(approvalNo.hashCode() & 0x7fffffff) % APPROVAL_LOCKS.length];
 	}
 
+	/**
+	 * 결제 한 건을 jw_payment 에 기록한다.
+	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
+	 *   카드사명을 모르면 해외카드
+	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 나머지는 교통카드로 기록
+	 * jw_terminal 에 없는 단말기면 기록하지 않고 NO_TERMINAL 을 돌려준다.
+	 * 기록 후 단말기의 last_dt 를 갱신한다.
+	 */
 	public RecordStatus setPayment(PaymentKicc payment) {
 		// 등록되지 않은 단말기의 결제는 기록하지 않고 FAIL 로 응답한다.
 		Boolean registered = CardPaymentLedger.terminalExists(payment.getTerminalID());

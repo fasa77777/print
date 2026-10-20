@@ -42,16 +42,18 @@ public final class JsonHttpClient {
 		HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
 		con.setDoOutput(true);
 		con.setDoInput(true);
-		con.setRequestProperty("Content-Type", "application/json");
+		con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
 		con.setRequestProperty("Accept", "application/json");
 		con.setRequestMethod("POST");
 		// 중계 서버가 응답하지 않으면 소켓 작업 스레드가 묶여 다른 단말기 전문까지 밀리므로 시간을 제한한다.
 		con.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
 		con.setReadTimeout(READ_TIMEOUT_MILLIS);
 
-		OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream());
-		wr.write(body.toString());
-		wr.flush();
+		// UTF-8 로 보낸다. (예전에는 OS 기본 인코딩이라 Windows 에서는 한글이 MS949 로 나가 깨질 수 있었다)
+		try (OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream(), "UTF-8")) {
+			wr.write(body.toString());
+			wr.flush();
+		}
 
 		int status = con.getResponseCode();
 		if (status != HttpURLConnection.HTTP_OK) {

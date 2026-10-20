@@ -30,6 +30,11 @@ public class CyberMoneyKyoceraPaymentSQL {
 			logger.info("사이버머니 결제 금액 오류: [" + payment.getTotalAmount() + "]");
 			return new CyberMoneyResult(Status.ERROR, 0);
 		}
+		// 카드번호가 비어 있으면 빈 카드번호로 cybermoney 에 새로 등록되던 것을 막는다.
+		if (card == null || card.trim().isEmpty()) {
+			logger.warn("카드번호 없는 사이버머니 결제 terminalID={}", payment.getTerminalID());
+			return new CyberMoneyResult(Status.NO_CARD, 0);
+		}
 
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();

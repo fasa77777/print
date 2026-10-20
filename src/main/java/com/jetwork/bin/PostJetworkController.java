@@ -3,6 +3,7 @@ package com.jetwork.bin;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Vector;
@@ -230,6 +231,10 @@ public class PostJetworkController {
    
    /** Xerox 결제에서 단말기 결제 결과를 기다리는 최대 시간(초). 넘으면 결제 실패(NO)로 응답한다. */
    private static final int XEROX_RESULT_TIMEOUT_SECONDS = 120;
+   /** 결제 단말기가 결제 요청을 받는 포트 */
+   private static final int TERMINAL_PAY_PORT = 10000;
+   /** 결제 단말기 접속 제한 시간 */
+   private static final int TERMINAL_CONNECT_TIMEOUT_MILLIS = 5000;
 
    /**
     * Xerox 출력 결제.
@@ -237,6 +242,7 @@ public class PostJetworkController {
     *    그 단말기(10000번 포트)에 결제 요청 전문을 보내고
     * 2. 그 단말기의 결제 결과가 소켓 서버(10020번 포트)로 도착할 때까지 최대 120초 기다린 뒤
     * 3. 승인이면 OK, 거절·취소·시간 초과면 NO 로 응답한다.
+    *    금액 오류나 단말기에 접속하지 못한 경우도 (500 오류 대신) NO 로 응답한다.
     */
    @RequestMapping(method = RequestMethod.POST, path = "/xerox/xeroxPayment" ,consumes = "application/json")
    public PriceXeroxSendResult postRequest8(@RequestBody XeroxPay xeroxPay, HttpServletRequest request) throws UnknownHostException, IOException{
@@ -266,14 +272,29 @@ public class PostJetworkController {
    		return ps;
    	}
 
-   	int amount = Integer.parseInt(xeroxPay.getTotalAmount().trim());
+   	// 금액이 비었거나 숫자가 아니면 (예전에는 500 오류) 결제하지 않고 NO
+   	int amount;
+   	try {
+   		amount = Integer.parseInt(xeroxPay.getTotalAmount().replace("\"", "").trim());
+   	} catch (RuntimeException e) {
+   		logger.warn("Xerox 결제 금액 오류 [{}] {}", xeroxPay.getTotalAmount(), terminal);
+   		ps.setResult("NO");
+   		return ps;
+   	}
+   	if (amount <= 0) {
+   		logger.warn("Xerox 결제 금액이 0원 이하 [{}] {}", amount, terminal);
+   		ps.setResult("NO");
+   		return ps;
+   	}
    	logger.info("Xerox 결제 요청 {} ({}로 찾음) 금액={} 작업={}", terminal, how, amount, xeroxPay.getJobType());
 
    	// 2. 이 단말기의 이전 결제 결과를 지우고 새 결제를 시작한다
    	terminal.startPayment(amount, xeroxPay.getColor(), xeroxPay.getTotalPages());
 
    	// 3. 결제 단말기(10000번 포트)에 결제 요청 전문을 보낸다
-   	try (Socket sck = new Socket(terminal.getIp(), 10000)) {
+   	//    단말기가 꺼져 있거나 응답이 없으면 (예전에는 500 오류, 접속 대기도 OS 기본값 20초 이상) 5초 만에 NO
+   	try (Socket sck = new Socket()) {
+   		sck.connect(new InetSocketAddress(terminal.getIp(), TERMINAL_PAY_PORT), TERMINAL_CONNECT_TIMEOUT_MILLIS);
    		sck.setSoTimeout(60000);
    		OutputStream sos = sck.getOutputStream();
    		sos.write(new ReqCharge(amount).assemble());
@@ -282,6 +303,10 @@ public class PostJetworkController {
    		byte[] ack = new byte[3];
    		int read = sck.getInputStream().read(ack, 0, ack.length);
    		logger.debug("단말기 응답 {} bytes", read);
+   	} catch (IOException e) {
+   		logger.warn("결제 단말기에 결제 요청을 보내지 못함 {} : {}", terminal, e.toString());
+   		ps.setResult("NO");
+   		return ps;
    	}
 
    	// 4. 단말기가 10020번 소켓 서버로 결과를 보내면 SocketServerDriver 가 이 단말기의 결과로 기록한다

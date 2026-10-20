@@ -17,9 +17,14 @@ public class UserCyberMoneySQL {
 	/**
 	 * @param terminalID 가맹점을 찾을 단말기 ID (컨트롤러는 요청의 userID 를 넘긴다)
 	 * @param card       카드번호
-	 * @return 잔액 문자열. 새로 등록했으면 "0", 오류면 빈 문자열
+	 * @return 잔액 문자열. 새로 등록했으면 "0", 카드번호가 없거나 오류면 빈 문자열
 	 */
 	public String getUser(String terminalID, String card) {
+		// 카드번호가 비어 있으면 조회·등록하지 않는다. (빈 카드번호가 cybermoney 에 등록되지 않게)
+		if (card == null || card.trim().isEmpty()) {
+			logger.warn("카드번호 없는 잔액 조회 terminalID={}", terminalID);
+			return "";
+		}
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {

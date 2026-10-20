@@ -28,9 +28,14 @@ public class PrintCyberPOST {
 				terminal.setResult(false);
 				logger.info("사이버머니 승인 거절 {} reason={}", terminal, response.get("reason"));
 			} else {
+				// 결제가 됐는지 알 수 없으면 승인으로 보지 않는다.
+				// (예전에는 결과를 기록하지 않아 Xerox 결제 API 가 120초를 다 기다린 뒤 NO 로 응답했다)
+				terminal.setResult(false);
 				logger.warn("사이버머니 응답 결과를 알 수 없음 {} : {}", terminal, response);
 			}
 		} catch (Exception e) {
+			// 중계 서버 접속 실패·시간 초과·응답 형식 오류도 바로 실패로 알린다.
+			terminal.setResult(false);
 			logger.warn("사이버머니 결제 요청 실패 {} : {}", terminal, e.toString());
 		}
 	}

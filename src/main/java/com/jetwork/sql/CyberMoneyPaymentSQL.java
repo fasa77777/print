@@ -19,7 +19,7 @@ public class CyberMoneyPaymentSQL {
 
 	/**
 	 * 사이버머니로 결제한다.
-	 * 1. 금액이 숫자가 아니면 ERROR, 등록되지 않은 단말기면 NO_TERMINAL
+	 * 1. 금액이 숫자가 아니면 ERROR, 카드번호가 비었으면 NO_CARD, 등록되지 않은 단말기면 NO_TERMINAL
 	 * 2. 같은 결제번호(cyberNo)로 이미 처리됐으면 DUPLICATE (차감하지 않음)
 	 * 3. 처음 보는 카드면 0원으로 등록하고 NO_CARD
 	 * 4. 잔액이 금액보다 적으면 INSUFFICIENT (차감하지 않음)
@@ -31,6 +31,11 @@ public class CyberMoneyPaymentSQL {
 		if (amount == null || amount < 0) {
 			logger.info("사이버머니 결제 금액 오류: [" + payment.getTotalAmount() + "]");
 			return new CyberMoneyResult(Status.ERROR, 0);
+		}
+		// 카드번호가 비어 있으면 빈 카드번호로 cybermoney 에 새로 등록되던 것을 막는다.
+		if (card == null || card.trim().isEmpty()) {
+			logger.warn("카드번호 없는 사이버머니 결제 terminalID={}", payment.getTerminalID());
+			return new CyberMoneyResult(Status.NO_CARD, 0);
 		}
 
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
