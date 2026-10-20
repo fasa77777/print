@@ -3,6 +3,8 @@ package com.jetwork.sql;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -12,7 +14,8 @@ import java.util.Properties;
  *
  * 읽는 순서 (뒤에 있는 값이 앞의 값을 덮어씀)
  *   1. classpath 의 db.properties  (src/main/resources/db.properties, Git 에는 올리지 않음)
- *   2. 환경변수 DB_URL, DB_USERNAME, DB_PASSWORD  (운영 서버에서 쓰기 좋음)
+ *   2. 실행한 폴더의 db.properties, 또는 -Ddb.config=경로 로 지정한 파일 (운영 서버에서 권장: jar 에 비밀번호가 들어가지 않음)
+ *   3. 환경변수 DB_URL, DB_USERNAME, DB_PASSWORD
  *
  * 커넥션 풀 크기도 db.properties 의 db.pool.maxActive / db.pool.minIdle 로 바꿀 수 있다.
  *
@@ -37,12 +40,25 @@ public final class DbConfig {
 
 	static {
 		Properties props = new Properties();
+		// 1) jar 안의 db.properties (src/main/resources/db.properties 를 넣고 빌드한 경우)
 		try (InputStream is = DbConfig.class.getResourceAsStream(RESOURCE)) {
 			if (is != null) {
 				props.load(is);
+				logger.info("[DbConfig] jar 안의 db.properties 를 읽었습니다");
 			}
 		} catch (IOException e) {
 			logger.error("DbConfig 처리 중 오류", e);
+		}
+		// 2) jar 밖의 db.properties (실행한 폴더, 또는 -Ddb.config=경로). 있으면 1) 의 값을 덮어쓴다.
+		//    운영 서버에서는 jar 에 비밀번호를 넣지 않고 jar 옆에 이 파일을 두는 것을 권장한다.
+		File external = new File(System.getProperty("db.config", "db.properties"));
+		if (external.isFile()) {
+			try (InputStream is = new FileInputStream(external)) {
+				props.load(is);
+				logger.info("[DbConfig] {} 를 읽었습니다", external.getAbsolutePath());
+			} catch (IOException e) {
+				logger.error("[DbConfig] " + external.getAbsolutePath() + " 를 읽지 못했습니다", e);
+			}
 		}
 
 		url = pick("DB_URL", props.getProperty("db.url"));

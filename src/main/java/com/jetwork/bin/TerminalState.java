@@ -27,8 +27,19 @@ public final class TerminalState {
 	private boolean resultArrived;
 	private boolean approved;
 
+	/** 마지막으로 소켓에 접속한 시각 (오래 접속 없는 단말기 정리용) */
+	private volatile long lastSeen = System.currentTimeMillis();
+
 	TerminalState(String ip) {
 		this.ip = ip;
+	}
+
+	void touch() {
+		lastSeen = System.currentTimeMillis();
+	}
+
+	long getLastSeen() {
+		return lastSeen;
 	}
 
 	public String getIp() {

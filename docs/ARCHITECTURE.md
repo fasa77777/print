@@ -100,6 +100,10 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | (소켓) 티머니 거절 판별 오류 | R32 첫 바이트가 0xFF 일 때만 거절 |
 | (소켓) 사이버머니 결제번호가 1초 안에 겹침 | 같은 형식으로 겹치지 않게 (CyberNo) |
 | 중계 서버가 멈추면 소켓 처리 전체가 멈춤 | 중계 서버 요청에 접속 5초·응답 15초 제한, UTF-8 전송 |
+| 중계 서버가 오류(200 이 아닌 응답)를 주면 소켓이 GC 될 때까지 열린 채 남음 (오류 300번에 소켓 254개) | 오류 응답 본문도 끝까지 읽고 닫음, 예외 때는 연결을 끊음 |
+| 로그가 콘솔에만 찍혀, 파일로 돌려 실행하면 한 파일이 디스크가 찰 때까지 커짐 | `logs/jetwork.log` 에 기록, 10MB 마다 새 파일, 30일·전체 1GB 까지만 보관 |
+| DB 비밀번호가 jar 안에 들어감 (src/main/resources/db.properties 를 넣고 빌드) | jar 옆(실행한 폴더)의 db.properties 나 `-Ddb.config=경로` 를 먼저 읽음. jar 에 넣지 않아도 됨 |
+| (소켓) 한 번 접속한 IP 의 단말기 상태가 영원히 남아, IP 가 바뀔 때마다 목록이 늘어남 | 24시간 넘게 접속이 없고 결제 중이 아닌 단말기 상태는 정리 |
 
 ## 7. 커넥션 풀 (DBCPConnectionMgr, HikariCP)
 
@@ -122,8 +126,9 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 
 | 항목 | 내용 |
 |---|---|
-| `src/main/resources/application.properties` | 포트 8090 |
-| `src/main/resources/db.properties` | **Git 에 올리지 않음.** `db.properties.example` 을 복사해서 `db.url`, `db.username`, `db.password` 를 채운다. 풀 크기 `db.pool.maxActive` / `db.pool.minIdle` (기본 200 / 10) |
+| `src/main/resources/application.properties` | 포트 8090, 로그 파일(`logs/jetwork.log`, 10MB·30일·1GB) |
+| `db.properties` (jar 와 같은 폴더) 또는 `-Ddb.config=경로` | **운영 서버 권장.** jar 안의 값보다 우선. jar 에 비밀번호가 들어가지 않는다 |
+| `src/main/resources/db.properties` | **Git 에 올리지 않음.** 이클립스에서 실행할 때 쓰기 좋음. `db.properties.example` 을 복사해서 `db.url`, `db.username`, `db.password` 를 채운다. 풀 크기 `db.pool.maxActive` / `db.pool.minIdle` (기본 200 / 10) |
 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 db.properties 보다 우선 |
 | 실행 옵션 `-Dsocket.server=true` | 결제 단말기 소켓 서버(10020) 시작. 기본은 꺼짐 (jar 와 같음) |
 | 실행 옵션 `-Drelay.baseUrl=...` | 소켓 서버가 결과를 보내는 중계 서버 주소 (기본 `http://pay1.printnuri.com:8090/jetwork`) |

@@ -11,7 +11,8 @@
 1. DB 접속 정보 파일을 만듭니다.
    `src/main/resources/db.properties.example` 을 같은 폴더에 `db.properties` 로 복사하고 값을 채웁니다.
    이 파일은 `.gitignore` 에 들어 있어서 GitHub 에 올라가지 않습니다.
-   운영 서버에서는 파일 대신 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 를 써도 됩니다.
+   운영 서버에서는 jar 와 같은 폴더에 `db.properties` 를 두면 jar 안의 값보다 먼저 읽습니다 (jar 에 비밀번호를 넣지 않아도 됩니다). 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 가 있으면 그것이 가장 우선입니다.
+   로그는 실행한 폴더의 `logs/jetwork.log` 에 남습니다 (10MB 마다 새 파일, 30일·1GB 까지 보관).
 
 2. 실행합니다.
    - 이클립스: `JetworkServerApplication` 우클릭 → Run As → Java Application (또는 Spring Boot App)

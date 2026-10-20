@@ -36,3 +36,4 @@ db.properties
 
 ### Eclipse 빌드 결과물 ###
 /bin/
+logs/

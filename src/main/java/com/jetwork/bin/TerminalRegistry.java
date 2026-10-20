@@ -15,6 +15,15 @@ public final class TerminalRegistry {
 	private TerminalRegistry() {
 	}
 
+	/**
+	 * 이 시간 넘게 소켓 접속이 없고 진행 중인 결제도 없는 단말기 상태는 지운다.
+	 * 예전에는 한 번 접속한 IP 가 영원히 남아서, 단말기 IP 가 바뀔 때마다(DHCP 등) 목록이 계속 늘었다.
+	 */
+	static final long STALE_MILLIS = 24L * 60 * 60 * 1000;
+	/** 정리는 이 횟수만큼 접속할 때마다 한 번 한다 */
+	private static final int CLEANUP_EVERY = 1000;
+	private static final java.util.concurrent.atomic.AtomicInteger connects = new java.util.concurrent.atomic.AtomicInteger();
+
 	/** 소켓에 접속한 단말기의 상태. 처음 보는 IP 면 새로 만든다. */
 	public static TerminalState connected(String ip) {
 		lastIp = ip;
@@ -26,7 +35,24 @@ public final class TerminalRegistry {
 				state = created;
 			}
 		}
+		state.touch();
+		if (connects.incrementAndGet() % CLEANUP_EVERY == 0) {
+			removeStale(System.currentTimeMillis() - STALE_MILLIS);
+		}
 		return state;
+	}
+
+	/** 마지막 접속이 olderThan 보다 오래됐고 진행 중인 결제가 없는 단말기 상태를 지운다. 지운 개수를 돌려준다. */
+	static int removeStale(long olderThan) {
+		int removed = 0;
+		for (java.util.Iterator<TerminalState> it = BY_IP.values().iterator(); it.hasNext();) {
+			TerminalState state = it.next();
+			if (state.getLastSeen() < olderThan && state.currentJob() == null) {
+				it.remove();
+				removed++;
+			}
+		}
+		return removed;
 	}
 
 	/** IP 로 단말기를 찾는다. 소켓에 접속한 적이 없으면 null. */
