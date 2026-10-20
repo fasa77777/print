@@ -2,7 +2,7 @@
 
 무인 프린트·복사기 매장의 결제 서버입니다. 결제 단말기와 복사기 에이전트의 요청을 받아 (API 주소 `/jetwork/...`) MSSQL 에 결제·단말기·프린터 정보를 기록합니다.
 
-소스는 **실서버에서 돌고 있는 `JetworkServer-0.0.10-SNAPSHOT.jar` (2022-04-18 빌드)를 역컴파일한 것**이라 동작이 실서버와 같습니다. (DB 접속 정보만 소스에서 뺐습니다)
+실서버에서 돌고 있는 `JetworkServer-0.0.10-SNAPSHOT.jar` (2022-04-18 빌드)와 API 주소·응답 형식이 같고, jar 에 있던 문제(SQL 인젝션, 사이버머니 동시 결제, 결제 1초 대기 등)를 고친 버전입니다. jar 와 다르게 동작하는 부분은 docs/ARCHITECTURE.md 5장에 있습니다.
 
 코드 구조, API 목록, DB 테이블, 알려진 문제는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 에 정리되어 있습니다.
 
@@ -11,7 +11,8 @@
 1. DB 접속 정보 파일을 만듭니다.
    `src/main/resources/db.properties.example` 을 같은 폴더에 `db.properties` 로 복사하고 값을 채웁니다.
    이 파일은 `.gitignore` 에 들어 있어서 GitHub 에 올라가지 않습니다.
-   운영 서버에서는 파일 대신 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 를 써도 됩니다.
+   운영 서버에서는 jar 와 같은 폴더에 `db.properties` 를 두면 jar 안의 값보다 먼저 읽습니다 (jar 에 비밀번호를 넣지 않아도 됩니다). 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 가 있으면 그것이 가장 우선입니다.
+   로그는 실행한 폴더의 `logs/jetwork.log` 에 남습니다 (10MB 마다 새 파일, 30일·1GB 까지 보관).
 
 2. 실행합니다.
    - 이클립스: `JetworkServerApplication` 우클릭 → Run As → Java Application (또는 Spring Boot App)
@@ -28,7 +29,7 @@
 ## 테스트
 
 서버를 띄운 뒤 `src/test/java/com/jetwork/test/PaymentTestClient.java` 를 우클릭 → **Run As → Java Application** 하면
-단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다. 기대값은 실서버 jar 동작 기준입니다.
+단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다. 
 
 단말기 ID 등은 **Run Configurations → Arguments** 에 넣습니다.
 

@@ -47,12 +47,6 @@
 		<scope>runtime</scope>
 		
 		</dependency>
-<!-- DB 커넥션 풀 (DBCPConnectionMgr) -->
-<dependency>
-   <groupId>commons-dbcp</groupId>
-   <artifactId>commons-dbcp</artifactId>
-   <version>1.4</version>
-</dependency>
 	<!-- 중계 서버로 보내는 JSON 생성·파싱 (co.kr.json) -->
 	<dependency>
 	    <groupId>com.googlecode.json-simple</groupId>
@@ -65,7 +59,7 @@
 		
 		<groupId>org.springframework.boot</groupId>
 		
-		<!-- spring-jdbc. DataSource 자동 설정은 JetworkServerApplication 에서 끈다 -->
+		<!-- spring-jdbc + HikariCP (DBCPConnectionMgr 의 커넥션 풀). Spring DataSource 자동 설정은 JetworkServerApplication 에서 끈다 -->
 		<artifactId>spring-boot-starter-jdbc</artifactId>
 		
 		</dependency>

@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  *   처럼 넣는다. socket=true 를 넣으면 단말기 소켓(10020) 접속 테스트도 한다.
  *   (소켓 서버는 실서버 jar 처럼 기본으로 꺼져 있다. 서버를 -Dsocket.server=true 로 실행했을 때만 테스트)
  *
- * 응답 기대값은 실서버 jar(2022-04-18 빌드) 동작 기준이다.
+ * 주소·응답 형식은 실서버 jar 와 같고, 결제 기록은 버그를 고친 동작 기준이다 (docs/ARCHITECTURE.md).
  *
  * 실행 방법 (명령 프롬프트, Java 11 이상)
  *   java src\test\java\com\jetwork\test\PaymentTestClient.java terminalID=0788888 serial=...
@@ -105,13 +105,12 @@ public class PaymentTestClient {
 		expectIn(r, "result", "OK", "FAIL");
 		boolean firstOk = "OK".equals(r.get("result"));
 		if (!firstOk) {
-			System.out.println("   ※ 결제 실패 사유: " + r.get("reason") + " (no money = 잔액 부족, no card = 미등록 카드 또는 결제 후 잔액 0원)");
+			System.out.println("   ※ 결제 실패 사유: " + r.get("reason") + " (no money = 잔액 부족, no card = 미등록 카드)");
 		}
 
-		// 실서버 jar 는 같은 카드·결제번호로 이미 결제된 건이면 차감하지 않고 "no card" 로 응답한다.
-		r = post("같은 결제번호로 다시 결제 → 차감 없이 FAIL(no card)", "/postCyberMoneyPayment", pay);
+		r = post("같은 결제번호로 다시 결제 → 차감 없이 FAIL(duplicate)", "/postCyberMoneyPayment", pay);
 		if (firstOk) {
-			expect(r, "reason", "no card");
+			expect(r, "reason", "duplicate");
 		} else {
 			System.out.println("   (첫 결제가 실패해서 중복 확인은 건너뜀)");
 		}
@@ -121,13 +120,13 @@ public class PaymentTestClient {
 				"paperSize", "A4", "color", "2", "jobType", "print", "totalPages", "1"));
 		expectIn(r, "result", "OK", "FAIL");
 
-		// 3. 카드·교통카드 결제 기록 (실서버 jar 는 응답이 항상 OK, 기록 내용은 jw_payment 에서 확인)
+		// 3. 카드·교통카드 결제 기록 (응답은 항상 OK, 기록 내용은 jw_payment 에서 확인)
 		section("3. 카드·교통카드 결제 기록");
 		expect(post("신용카드 (신한 029)", "/postCraditPayment", card("R09", newNo(), "R11", "N", "R12", "029", "R33", "")), "result", "OK");
-		expect(post("체크카드 (카드사 코드 없음 → 카드사명 빈 값)", "/postCraditPayment", card("R09", newNo(), "R11", "Y", "R12", "", "R33", "")), "result", "OK");
+		expect(post("체크카드 (카드사 코드 없음 → 해외카드)", "/postCraditPayment", card("R09", newNo(), "R11", "Y", "R12", "", "R33", "")), "result", "OK");
 		expect(post("티머니", "/postCraditPayment", card("R11", "", "R33", "TM")), "result", "OK");
 		expect(post("캐시비", "/postCraditPayment", card("R11", "", "R33", "EB")), "result", "OK");
-		expect(post("기타 교통카드 (실서버 jar 는 기록하지 않음)", "/postCraditPayment", card("R11", "", "R33", "RP")), "result", "OK");
+		expect(post("기타 교통카드 → 교통카드", "/postCraditPayment", card("R11", "", "R33", "RP")), "result", "OK");
 		expect(post("KICC 단말기 카드 (국민 016)", "/kicc/postCraditPayment", card("R09", newNo(), "R10", "N", "R12", "016", "R33", "")), "result", "OK");
 		expect(post("프린트누리 결제 (삼성 031)", "/printnuri/payment", json(
 				"terminalID", terminalID, "price", "100", "payOK", newNo(), "craditName", "031", "payType", "N",
@@ -148,6 +147,7 @@ public class PaymentTestClient {
 		System.out.println();
 		System.out.println("결제 기록 확인 SQL:");
 		System.out.println("  SELECT TOP 20 payment_type, payment_cardName, payment_pay, payment_ok, reg_date FROM jw_payment WHERE terminal_id = '" + terminalID + "' ORDER BY reg_date DESC;");
+		System.out.println("  SELECT terminal_id, last_dt FROM jw_terminal WHERE terminal_id = '" + terminalID + "';");
 		System.out.println("테스트 기록 지우기:");
 		System.out.println("  DELETE FROM jw_payment WHERE terminal_id = '" + terminalID + "' AND reg_date >= CAST(GETDATE() AS DATE);");
 	}
@@ -230,7 +230,7 @@ public class PaymentTestClient {
 			s.getOutputStream().flush();
 			int n = s.getInputStream().read(); // 서버는 처리 후 접속을 닫는다
 			ok("소켓 서버가 전문을 받고 접속을 닫음 (read=" + n + ")");
-			System.out.println("   ※ 서버 콘솔에 'ck[02]' 와 단말기 ID 가 찍혔는지 확인하세요.");
+			System.out.println("   ※ 서버 콘솔에 '전문 수신 단말기[" + terminalID + " ...] 작업코드=02' 가 찍혔는지 확인하세요.");
 		} catch (Exception e) {
 			bad("소켓 서버 접속/전송 실패: " + e);
 		}

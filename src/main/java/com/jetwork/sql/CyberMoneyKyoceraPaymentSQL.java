@@ -1,153 +1,111 @@
-/*
- * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
- */
 package com.jetwork.sql;
 
-import com.jetwork.bin.ConnectionPool;
-import com.jetwork.model.PaymentKyocera;
-import com.jetwork.sql.DBCPConnectionMgr;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
+import com.jetwork.bin.ConnectionPool;
+import com.jetwork.model.CyberMoneyResult;
+import com.jetwork.model.CyberMoneyResult.Status;
+import com.jetwork.model.PaymentKyocera;
+
+import co.kr.up.util.Mask;
+
+/**
+ * 교세라 사이버머니 결제 (/stech/kyocera/postCyberMoneyPayment).
+ */
 public class CyberMoneyKyoceraPaymentSQL {
-    private Connection conn;
-    private Statement stmt;
-    private ResultSet rs;
-    private boolean userFlag = true;
 
-    public String setPayment(PaymentKyocera payment) {
-        String money = "";
-        DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-        this.conn = dbcp.getConnection();
-        try {
-            try {
-                this.conn.setAutoCommit(false);
-                System.out.println("1");
-                String stringSQL = " SELECT * FROM [dbo].[cybermoney] WHERE [cardNumber] = '" + payment.getUserCard() + "'";
-                this.stmt = this.conn.createStatement(1004, 1007);
-                this.rs = this.stmt.executeQuery(stringSQL);
-                while (this.rs.next()) {
-                    money = this.rs.getString("cyberMoney");
-                    this.userFlag = false;
-                }
-                System.out.println("2");
-                stringSQL = "select * from [dbo].[jw_payment] where [userCard] = '" + payment.getUserCard() + "' and [cyberNo] = '" + payment.getCyberNo() + "'";
-                this.stmt = this.conn.createStatement(1004, 1007);
-                this.rs = this.stmt.executeQuery(stringSQL);
-                boolean ck = false;
-                while (this.rs.next()) {
-                    ck = true;
-                }
-                if (ck) {
-                    money = "0";
-                } else if (this.userFlag) {
-                    stringSQL = " SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = '" + payment.getTerminalID() + "'";
-                    this.stmt = this.conn.createStatement(1004, 1007);
-                    this.rs = this.stmt.executeQuery(stringSQL);
-                    String franID = "";
-                    while (this.rs.next()) {
-                        System.out.println(this.rs.getString(3));
-                        franID = this.rs.getString(3);
-                    }
-                    System.out.println(franID);
-                    String insertSQL = "INSERT INTO [dbo].[cybermoney] ([cardNumber],[cyberMoney],[fran_id],[reg_date]) VALUES  ('" + payment.getUserCard() + "',0,'" + franID + "',getdate());";
-                    this.stmt.executeUpdate(insertSQL);
-                    money = "0";
-                } else {
-                    stringSQL = " SELECT * FROM [dbo].[cybermoney] WHERE [cardNumber] = '" + payment.getUserCard().trim() + "'";
-                    System.out.println(stringSQL);
-                    this.stmt = this.conn.createStatement(1004, 1007);
-                    this.rs = this.stmt.executeQuery(stringSQL);
-                    while (this.rs.next()) {
-                        money = this.rs.getString("cyberMoney");
-                    }
-                    int moneyK = Integer.parseInt(money);
-                    System.out.println("payment.getTotalAmount() == [" + payment.getTotalAmount().replaceAll("\"", "").trim() + "]");
-                    System.out.println("moneyK == [" + moneyK + "]");
-                    money = String.valueOf(moneyK -= Integer.parseInt(payment.getTotalAmount().replaceAll("\"", "").trim()));
-                    System.out.println("moneyk ==== " + moneyK);
-                    if (moneyK > 0) {
-                        String updateSQL = "update [dbo].[cybermoney] set  [cyberMoney] = '" + moneyK + "' " + " where [cardNumber] = '" + payment.getUserCard() + "' ";
-                        this.stmt = this.conn.createStatement(1004, 1007);
-                        System.out.println(updateSQL);
-                        this.stmt.executeUpdate(updateSQL);
-                        stringSQL = "select b.fran_name from [dbo].[jw_terminal] a, [dbo].[jw_franchise] b  where a.fran_id = b.fran_id and a.terminal_id = '" + payment.getTerminalID() + "'";
-                        this.stmt = this.conn.createStatement(1004, 1007);
-                        this.rs = this.stmt.executeQuery(stringSQL);
-                        String fran_name = "";
-                        while (this.rs.next()) {
-                            fran_name = this.rs.getString(1);
-                        }
-                        System.out.println("fran_name ==" + fran_name);
-                        if ("1".equals(payment.getColor())) {
-                            payment.setColor("true");
-                        } else if ("2".equals(payment.getColor())) {
-                            payment.setColor("false");
-                        }
-                        String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName],[userCard],[cyberNo],[payment_totalCount]) VALUES  ('" + payment.getTerminalID() + "','" + payment.getTotalAmount() + "',N'사이버머니','" + payment.getPaperSize() + "'," + "'" + payment.getColor() + "','" + payment.getCyberNo() + "','" + payment.getJobType() + "',getdate(), N'" + fran_name + "', '" + payment.getUserCard() + "','" + payment.getCyberNo() + "','" + payment.getTotalPages() + "' );";
-                        this.stmt = this.conn.createStatement(1004, 1007);
-                        System.out.println(insertSQL);
-                        this.stmt.executeUpdate(insertSQL);
-                    } else {
-                        money = "0";
-                    }
-                    money = String.valueOf(moneyK);
-                    System.out.println("money ==== " + money);
-                }
-                this.conn.commit();
-            }
-            catch (SQLException e) {
-                e.printStackTrace();
-                dbcp.freeConnection(this.conn, this.stmt, this.rs);
-            }
-        }
-        finally {
-            dbcp.freeConnection(this.conn, this.stmt, this.rs);
-        }
-        return money;
-    }
+	private static final Logger logger = LoggerFactory.getLogger(CyberMoneyKyoceraPaymentSQL.class);
 
-    public String reMoney(String card) {
-        DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-        this.conn = dbcp.getConnection();
-        String money = "";
-        try {
-            try {
-                this.conn.setAutoCommit(false);
-                System.out.println("1");
-                String stringSQL = " SELECT * FROM [dbo].[cybermoney] WHERE [cardNumber] = '" + card + "'";
-                this.stmt = this.conn.createStatement(1004, 1007);
-                this.rs = this.stmt.executeQuery(stringSQL);
-                while (this.rs.next()) {
-                    money = this.rs.getString("cyberMoney");
-                }
-                int moneyK = Integer.parseInt(money);
-                this.conn.commit();
-            }
-            catch (SQLException e) {
-                e.printStackTrace();
-                dbcp.freeConnection(this.conn, this.stmt, this.rs);
-            }
-        }
-        finally {
-            dbcp.freeConnection(this.conn, this.stmt, this.rs);
-        }
-        return money;
-    }
+	/**
+	 * 교세라 사이버머니로 결제한다. CyberMoneyPaymentSQL 과 같고,
+	 * 컬러 값을 1(컬러)/2(흑백)에서 true/false 로 바꿔 기록하는 점만 다르다.
+	 */
+	public CyberMoneyResult setPayment(PaymentKyocera payment) {
+		String card = payment.getUserCard();
+		Integer amount = CyberMoneyLedger.parseMoney(payment.getTotalAmount());
+		if (amount == null || amount < 0) {
+			logger.info("사이버머니 결제 금액 오류: [" + payment.getTotalAmount() + "]");
+			return new CyberMoneyResult(Status.ERROR, 0);
+		}
+		// 카드번호가 비어 있으면 빈 카드번호로 cybermoney 에 새로 등록되던 것을 막는다.
+		if (card == null || card.trim().isEmpty()) {
+			logger.warn("카드번호 없는 사이버머니 결제 terminalID={}", payment.getTerminalID());
+			return new CyberMoneyResult(Status.NO_CARD, 0);
+		}
 
-    public void freeConn() {
-        try {
-            if (this.stmt != null) {
-                this.stmt.close();
-            }
-            if (this.rs != null) {
-                this.rs.close();
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return new CyberMoneyResult(Status.ERROR, 0);
+		}
+		try {
+			conn.setAutoCommit(false);
+
+			Integer balance = CyberMoneyLedger.findBalance(conn, card);
+
+			// 같은 결제번호로 이미 처리된 결제는 다시 차감하지 않는다.
+			if (CyberMoneyLedger.isDuplicate(conn, card, payment.getCyberNo())) {
+				conn.commit();
+				return new CyberMoneyResult(Status.DUPLICATE, 0); // 응답 balance 는 실서버 jar 와 같이 0
+			}
+
+			if (balance == null) {
+				CyberMoneyLedger.registerCard(conn, card, payment.getTerminalID());
+				conn.commit();
+				return new CyberMoneyResult(Status.NO_CARD, 0);
+			}
+
+			if (!CyberMoneyLedger.deduct(conn, card, amount)) {
+				conn.commit();
+				logger.info("사이버머니 잔액 부족 card=" + Mask.card(card) + " balance=" + balance + " amount=" + amount);
+				// 응답 balance 는 실서버 jar 와 같이 "잔액 - 결제 금액" (음수)
+				return new CyberMoneyResult(Status.INSUFFICIENT, balance - amount);
+			}
+
+			// 교세라 에이전트는 컬러를 1(컬러) / 2(흑백)로 보낸다.
+			if ("1".equals(payment.getColor())) {
+				payment.setColor("true");
+			} else if ("2".equals(payment.getColor())) {
+				payment.setColor("false");
+			}
+
+			String franName = CyberMoneyLedger.findFranName(conn, payment.getTerminalID());
+			CyberMoneyLedger.insertPayment(conn, payment.getTerminalID(), String.valueOf(amount),
+					payment.getPaperSize(), payment.getColor(), payment.getCyberNo(), payment.getJobType(), franName,
+					card, payment.getCyberNo(), payment.getTotalPages());
+
+			Integer after = CyberMoneyLedger.findBalance(conn, card);
+			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
+			logger.info("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
+			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
+		} catch (Exception e) {
+			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return new CyberMoneyResult(Status.ERROR, 0);
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+	}
+
+	/** 카드의 현재 잔액. 등록되지 않았거나 오류면 빈 문자열. */
+	public String reMoney(String card) {
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return "";
+		}
+		try {
+			Integer balance = CyberMoneyLedger.findBalance(conn, card);
+			return balance == null ? "" : String.valueOf(balance);
+		} catch (Exception e) {
+			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			return "";
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+	}
 }

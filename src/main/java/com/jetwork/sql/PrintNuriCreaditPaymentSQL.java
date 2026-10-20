@@ -1,68 +1,56 @@
-/*
- * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
- */
 package com.jetwork.sql;
 
-import com.jetwork.bin.ConnectionPool;
-import com.jetwork.model.CardCompanyName;
-import com.jetwork.model.PrintNuriPay;
-import com.jetwork.sql.DBCPConnectionMgr;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+
+import com.jetwork.bin.ConnectionPool;
+import com.jetwork.model.CardCompanyName;
+import com.jetwork.model.RecordStatus;
+import com.jetwork.model.PrintNuriPay;
+
+/** 프린트누리 결제 기록 (/stech/printnuri/payment). */
 public class PrintNuriCreaditPaymentSQL {
-    private Connection conn;
-    private Statement stmt;
-    private ResultSet rs;
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    public String setPayment(PrintNuriPay payment) {
-        String money = "";
-        DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-        this.conn = dbcp.getConnection();
-        try {
-            try {
-                this.conn.setAutoCommit(false);
-                String payType = "";
-                payType = "Y".equals(payment.getPayType()) ? "체크카드" : "신용카드";
-                if ("TM".equals(payment.getPayTypeTM())) {
-                    payType = "티머니";
-                } else if ("EB".equals(payment.getPayTypeTM())) {
-                    payType = "캐시비";
-                }
-                System.out.println("111111111111");
-                String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName],[payment_totalCount]) VALUES  ('" + payment.getTerminalID() + "','" + payment.getPrice() + "',N'" + payType + "','" + payment.getPaperSize() + "'," + "'" + payment.getColor() + "','" + payment.getPayOK() + "','print',getdate(), N'" + CardCompanyName.getName(payment.getCraditName().trim()) + "','" + payment.getCount() + "' );";
-                this.stmt = this.conn.createStatement(1004, 1007);
-                System.out.println(insertSQL);
-                this.stmt.executeUpdate(insertSQL);
-                this.conn.commit();
-            }
-            catch (SQLException e) {
-                e.printStackTrace();
-                dbcp.freeConnection(this.conn, this.stmt, this.rs);
-            }
-        }
-        finally {
-            dbcp.freeConnection(this.conn, this.stmt, this.rs);
-        }
-        return money;
-    }
+	private static final Logger logger = LoggerFactory.getLogger(PrintNuriCreaditPaymentSQL.class);
 
-    public void freeConn() {
-        try {
-            if (this.stmt != null) {
-                this.stmt.close();
-            }
-            if (this.rs != null) {
-                this.rs.close();
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+	/**
+	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
+	 * payType 이 Y 면 체크카드, 아니면 신용카드. payTypeTM 이 TM/EB 면 티머니/캐시비.
+	 */
+	public RecordStatus setPayment(PrintNuriPay payment) {
+		String payType = "Y".equals(payment.getPayType()) ? "체크카드" : "신용카드";
+		if ("TM".equals(payment.getPayTypeTM())) {
+			payType = "티머니";
+		} else if ("EB".equals(payment.getPayTypeTM())) {
+			payType = "캐시비";
+		}
+
+		// 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다. 티머니·캐시비는 카드사명을 쓰지 않는다.
+		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
+		String cardName = isCard ? CardCompanyName.getCardName(payment.getCraditName())
+				: CardCompanyName.getName(CardPaymentLedger.trim(payment.getCraditName()));
+
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return RecordStatus.ERROR;
+		}
+		try {
+			conn.setAutoCommit(false);
+			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getPrice(), payType,
+					payment.getPaperSize(), payment.getColor(), payment.getPayOK(), "print",
+					cardName, payment.getCount());
+			conn.commit();
+			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
+			return RecordStatus.OK;
+		} catch (Exception e) {
+			logger.error("PrintNuriCreaditPaymentSQL 처리 중 오류", e);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return RecordStatus.ERROR;
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+	}
 }
