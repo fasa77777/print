@@ -79,7 +79,10 @@ public class PostJetworkController {
     	logger.info(terminal.getAgentVersion()); 
     	
     	// 단말기 ID 와 시리얼이 jw_terminal 에 등록된 단말기만 OK 로 응답한다.
+    	long started = System.currentTimeMillis();
     	TerminalInfoSQL.Status status = new TerminalInfoSQL().setTerminal(terminal);
+    	long elapsed = System.currentTimeMillis() - started;
+    	logger.info("단말기 확인 terminalID=" + terminal.getTerminalID() + " result=" + status + " (" + elapsed + "ms)");
 
     	PayRresult pr = new PayRresult();
     	pr.setTerminalID(terminal.getTerminalID());

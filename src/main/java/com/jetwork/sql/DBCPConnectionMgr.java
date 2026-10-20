@@ -34,8 +34,17 @@ public class DBCPConnectionMgr {
 	/** 쉬는 커넥션 점검 주기와, 이 시간 이상 쉰 커넥션은 닫음 (클라우드 방화벽이 유휴 연결을 끊기 전에 정리) */
 	private static final long EVICTION_RUN_MILLIS = 60 * 1000;
 	private static final long MIN_EVICTABLE_IDLE_MILLIS = 3 * 60 * 1000;
-	/** URL 에 지정이 없을 때 쓰는 접속·응답 타임아웃 (네트워크가 멈춰도 요청 스레드가 묶이지 않게) */
-	private static final String DEFAULT_URL_OPTIONS = "loginTimeout=10;socketTimeout=60000";
+	/**
+	 * URL 에 지정이 없을 때 붙이는 접속 옵션.
+	 * - loginTimeout=10: DB 접속을 10초 안에 못 하면 실패
+	 * - socketTimeout=15000: 쿼리 응답이 15초 안에 안 오면 실패 (요청 스레드가 무한히 묶이지 않게)
+	 * - lockTimeout=5000: 다른 연결이 잡고 있는 잠금을 5초까지만 기다리고 실패 (기본값은 무한 대기)
+	 * - sendStringParametersAsUnicode=false: 문자열 파라미터를 VARCHAR 로 보낸다.
+	 *   NVARCHAR 로 보내면 VARCHAR 컬럼(terminal_id 등)의 인덱스를 못 타고 테이블 전체를 읽어서,
+	 *   다른 연결이 잠근 행을 만나면 잠금이 풀릴 때까지 기다리게 된다.
+	 *   한글 값은 setNString 으로 보내므로 영향이 없다.
+	 */
+	private static final String DEFAULT_URL_OPTIONS = "loginTimeout=10;socketTimeout=15000;lockTimeout=5000;sendStringParametersAsUnicode=false";
 
 	private static DBCPConnectionMgr instance;
 
@@ -109,7 +118,7 @@ public class DBCPConnectionMgr {
 		System.out.println("[DB] 커넥션 풀 등록 완료 (최대 " + DbConfig.getPoolMaxActive() + "개, 유휴 " + DbConfig.getPoolMaxIdle() + "개)");
 	}
 
-	/** URL 에 loginTimeout / socketTimeout 이 없으면 기본값을 붙인다. */
+	/** URL 에 DEFAULT_URL_OPTIONS 의 옵션이 없으면 기본값을 붙인다. (URL 에 이미 있으면 그 값을 쓴다) */
 	static String withDefaultOptions(String url) {
 		if (url == null || url.isEmpty()) {
 			return url;

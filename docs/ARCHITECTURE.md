@@ -116,7 +116,8 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 대기 시간 | 10초 | 풀이 가득 찼을 때 기다리는 시간. 넘으면 커넥션 없음(null) → 결제는 FAIL/error 응답 |
 | 검증 쿼리 | `SELECT 1` | 빌려주기 전과 쉬는 동안 커넥션이 살아 있는지 확인 |
 | 유휴 정리 | 1분마다 점검, 3분 이상 쉰 커넥션 닫기 | 방화벽이 끊은 커넥션을 미리 정리 |
-| 접속·응답 타임아웃 | `loginTimeout=10`, `socketTimeout=60000` | DB URL 에 값이 없을 때 자동으로 붙임 |
+| 접속·응답·잠금 타임아웃 | `loginTimeout=10`, `socketTimeout=15000`, `lockTimeout=5000` | DB URL 에 값이 없을 때 자동으로 붙임. 다른 연결의 잠금은 5초까지만 기다린다 |
+| 문자열 파라미터 | `sendStringParametersAsUnicode=false` | VARCHAR 로 보내서 인덱스를 탄다 (NVARCHAR 로 보내면 테이블 전체를 읽고 잠금에 걸리기 쉽다) |
 
 중계 서버 주소는 `co.kr.json.JsonHttpClient.BASE_URL` 에 있습니다.
 
