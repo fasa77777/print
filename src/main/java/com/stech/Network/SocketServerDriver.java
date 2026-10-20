@@ -10,14 +10,9 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.jetwork.bin.JetworkServerApplication;
+import com.sun.prism.shader.Mask_TextureRGB_AlphaTest_Loader;
 
 import co.kr.json.JSonForm;
 import co.kr.json.JSonForm1;
@@ -25,83 +20,23 @@ import co.kr.json.JSonForm2;
 import co.kr.json.JSonForm3;
 import co.kr.up.util.Bytes;
 import co.kr.up.util.HexUtils;
-/**
- * 결제 단말기 소켓 서버 (포트 10020).
- *
- * 접속을 받는 스레드는 받기만 하고, 실제 처리(전문 해석, 중계 서버 HTTP 요청)는
- * 작업 스레드 풀에서 단말기마다 따로 한다. 한 단말기 처리가 느려도 다른 단말기는 기다리지 않는다.
- */
-public class SocketServerDriver implements Runnable {
-
-	private static final int PORT = 10020;
-	/** 동시에 처리할 수 있는 단말기 접속 수 */
-	private static final int WORKER_THREADS = 50;
-	/** 작업 스레드가 모두 바쁠 때 줄 세워 둘 수 있는 접속 수. 넘으면 접속 받는 스레드가 직접 처리한다 */
-	private static final int QUEUE_SIZE = 1000;
-	/** 단말기가 접속 후 이 시간 안에 데이터를 보내지 않으면 끊는다 */
-	private static final int READ_TIMEOUT_MILLIS = 10000;
-
-	private final ExecutorService workers = new ThreadPoolExecutor(
-			WORKER_THREADS, WORKER_THREADS, 60L, TimeUnit.SECONDS,
-			new ArrayBlockingQueue<Runnable>(QUEUE_SIZE),
-			new ThreadFactory() {
-				private final AtomicInteger seq = new AtomicInteger();
-
-				@Override
-				public Thread newThread(Runnable r) {
-					Thread t = new Thread(r, "terminal-socket-" + seq.incrementAndGet());
-					t.setDaemon(true);
-					return t;
-				}
-			},
-			new ThreadPoolExecutor.CallerRunsPolicy());
-
-	public void run() {
-		try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-			System.out.println("Server is listening on port " + PORT + " (worker threads " + WORKER_THREADS + ")");
-
-			while (true) {
-				final Socket socket;
-				try {
-					socket = serverSocket.accept();
-				} catch (IOException e) {
-					System.out.println("accept 실패: " + e);
-					continue;
-				}
-				workers.execute(new Runnable() {
-					@Override
-					public void run() {
-						handleConnection(socket);
-					}
-				});
-			}
-		} catch (IOException ex) {
-			System.out.println("Server exception: " + ex.getMessage());
-			ex.printStackTrace();
-		}
-	}
-
-	/** 단말기 접속 하나를 처리하고 소켓을 닫는다. */
-	private void handleConnection(Socket socket) {
-		try {
-			socket.setSoTimeout(READ_TIMEOUT_MILLIS);
-			handle(socket);
-		} catch (Exception e) {
-			System.out.println("Socket close" + e);
-		} finally {
-			try {
-				socket.close();
-			} catch (IOException e) {
-				// 이미 닫힘
-			}
-		}
-	}
-
-	/** 단말기가 보낸 전문 한 건을 해석해서 처리한다. (처리 내용은 기존과 같다) */
+//드라이버와 소켓연결
+public class SocketServerDriver  implements Runnable {
+	
+	Socket socket  = null;
 	@SuppressWarnings("static-access")
-	private void handle(Socket socket) throws Exception {
+	public void run() {
+		  
+        int port = Integer.parseInt("10020");
+ 
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+ 
+            System.out.println("Server is listening on port " + port);
+ 
+            while (true) {
+            	try {
+            		 socket = serverSocket.accept();
                      System.out.println("New Terminal connected  10020");
-                     // 1. 단말기가 보낸 데이터를 최대 1000바이트 읽는다 (10초 안에 안 오면 SocketTimeoutException)
                      InputStream is = socket.getInputStream();
 
                      byte[]rcvData  = new byte[1000];
@@ -113,13 +48,11 @@ public class SocketServerDriver implements Runnable {
                      System.out.println("[[데이터 받기 성공]]: " + message);
 
                      System.out.println(socket.getInetAddress().toString());
-          			// 2. 단말기 IP 를 기억해 둔다. Xerox 결제 API 가 이 IP 의 10000번 포트로 결제 요청을 보낸다
           			String [] ss = socket.getInetAddress().toString().split("/");
           			System.out.println("["+ss[1]+"]");
           			JetworkServerApplication.TerminalIP = ss[1];
           			String newString = new String(rcvData, "EUC-KR");
          			System.out.println(Arrays.toString(rcvData));
-         			// 3. 헤더를 1바이트씩 16진수로 찍어 본다 (로그용): [0]=STX, [1~2]=길이, [3]=순번, [4]=CMD, [5]=GCD, [6]=작업 코드
          			byte[]b_command = getbytes(rcvData,0,1);
          			StringBuffer stBuffer = new StringBuffer();
          	        for (int i = 0; i < b_command.length; i++) {
@@ -170,12 +103,10 @@ public class SocketServerDriver implements Runnable {
         	        System.out.println("6["+stBuffer.toString()+"]");
         	        String poli = stBuffer.toString();
         	 
-        	        // 4. 7번째 바이트(인덱스 6)가 작업 코드. 코드별로 처리가 나뉜다
         	        String ck= stBuffer.toString().trim();
         	        
         	        System.out.println("ck["+ck+"]");
         	        
-        	        // 02: 가격 정책 요청. 인덱스 44부터 10바이트가 단말기 ID. 서버 시작 후 처음 한 번만(chk2) 중계 서버에 정책을 요청한다
         	        if("02".equals(ck)) {
          	            byte[]b_command6 = getbytes(rcvData,6+38,10);
          	            stBuffer = new StringBuffer();
@@ -210,7 +141,6 @@ public class SocketServerDriver implements Runnable {
   	    			
   	 
          	            
-         	        // 09: 기타 전문. 읽기만 하고 처리하지 않는다 (1000바이트 버퍼에서 2000바이트를 읽으려 해 예외가 나고 접속이 닫힌다)
          	        }else if("09".equals(ck)) {
          	            byte[]b_command6 = getbytes(rcvData,6,2000);
          	            stBuffer = new StringBuffer();
@@ -264,7 +194,6 @@ public class SocketServerDriver implements Runnable {
 //         	            System.out.println("MS949 -> X-WINDOWS-949 : " + new String(stBuffer.toString().getBytes("MS949"), "X-WINDOWS-949"));
          	            
          	            System.out.println("ck========"+ck);
-         	        // 06: 사이버머니 카드 태그. 인덱스 8부터 4바이트가 카드번호(16진수). 중계 서버에 사이버머니 결제를 요청한다 (JSonForm2)
          	        }else if("06".equals(ck)) {
          	        	
          	        	System.out.println("사이버머니");
@@ -282,16 +211,11 @@ public class SocketServerDriver implements Runnable {
          	            	//stBuffer.append(Bytes.toHexString(b_command6[i]));
          	            	stBuffer.append(HexUtils.toHexString(b_command7[i]));
          	            }
-         	            System.out.println("사이버머니 카드 : " + co.kr.up.util.Mask.card(stBuffer.toString()));
+         	            System.out.println("ISO-8859-1 -> EUC-KR        : " +stBuffer.toString());
          	            
          	            JSonForm2 jf = new JSonForm2();
          				jf.setPaymentJson(stBuffer.toString());
          	            
-         	        // 04: 카드·티머니 결제 결과. 본문은 "S03=...;S10=...;R04=...;" 처럼 ';' 로 나뉜 텍스트다
-         	        //  - CANCEL 이 들어 있으면 취소
-         	        //  - R32 첫 바이트가 FF 면 티머니 거절, 아니면 티머니 승인 (JSonForm3)
-         	        //  - R04=0000 이면 카드 승인 (JSonForm), 7000~9999 면 거절
-         	        //  승인·거절이 정해지면 chk(승인 여부)와 chk1(결과 도착)을 바꿔 Xerox 결제 API 의 대기를 끝낸다
          	        }else if("04".equals(ck)) {
          	         //   byte[]b_command6 = MessageEvent.getbytes(rcvData,6,2000);
          	         //   stBuffer = new StringBuffer();
@@ -503,9 +427,21 @@ public class SocketServerDriver implements Runnable {
         	        
         	        
         	        
+                     socket.close();
+            	}catch (Exception e) {
+					// TODO: handle exception
+            		System.out.println("Socket close"+e);
+            		socket.close();
+				}
+               
+            }
+ 
+        } catch (IOException ex) {
+            System.out.println("Server exception: " + ex.getMessage());
+            ex.printStackTrace();
+        } 
 	}
-
-	  	/** 문자열의 각 글자를 "%02X " 형식의 16진수로 바꾼다. 예) "AB" -> "41 42 " */
+	
 	  public String stringToHex(String s) {
 		    String result = "";
 
@@ -516,7 +452,6 @@ public class SocketServerDriver implements Runnable {
 		    return result;
 	  }
 	  
-			/** src 의 offset 부터 length 바이트를 잘라 새 배열로 돌려준다. */
 		public static final byte[] getbytes(byte src[], int offset, int length){
 	        byte dest[] = new byte[length];
 	        System.arraycopy(src, offset, dest, 0, length);

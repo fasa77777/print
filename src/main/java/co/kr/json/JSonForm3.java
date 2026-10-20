@@ -9,10 +9,6 @@ import com.jetwork.bin.JetworkServerApplication;
 
 
 
-/**
- * 티머니 결제 승인(단말기 작업 코드 04, R32 가 FF 가 아님)을 중계 서버의 /printnuri/payment 로 보낸다.
- * 승인번호 대신 현재 시각(yyyyMMddHHmmss)을 쓴다.
- */
 public class JSonForm3 {
 	
 	public void setPaymentJson() {

@@ -1,74 +1,135 @@
 package com.jetwork.sql;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
+import com.jetwork.bin.ConnectionSQL;
+import com.jetwork.model.Terminal;
 
-/** 같은 날 같은 승인번호로 카드 결제가 두 번 기록되지 않게 확인한다. */
 public class PaymentCK {
-
-	/**
-	 * 오늘 같은 승인번호의 결제 내역이 없으면 true.
-	 * 동시에 들어온 중복 요청이 먼저 기록될 시간을 주려고 1초 기다린다 (기존 동작 유지).
-	 */
+	private Connection conn;
+	private Statement stmt;
+	private ResultSet rs;
+	private boolean userFlag = true;
+	
 	public boolean setTerminal(String paymentOK) {
+		//String money = "";
+		
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		Connection conn = dbcp.getConnection();
-		if (conn == null) {
-			return false;
-		}
-		boolean notExists = true;
-		try {
-			notExists = !CardPaymentLedger.existsToday(conn, paymentOK);
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			dbcp.freeConnection(conn);
-		}
-		// 기다리는 동안 커넥션을 붙잡고 있지 않도록, 반납한 뒤에 기다린다.
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		}
-		return notExists;
-	}
-
-	/** 오늘 같은 승인번호의 결제 내역이 있으면 가장 마지막 한 건을 지운다 (기존 동작 유지). */
-	public void setTerminal1(String paymentOK) {
-		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		Connection conn = dbcp.getConnection();
-		if (conn == null) {
-			return;
-		}
+		 conn  = dbcp.getConnection();
+		
 		try {
 			conn.setAutoCommit(false);
-			String lastId = null;
-			try (PreparedStatement ps = conn.prepareStatement(
-					"SELECT id FROM [jw_payment] WHERE (CONVERT(CHAR(10), reg_date, 120) = CONVERT(CHAR(10), getdate(), 120)) "
-							+ " AND payment_ok = ?")) {
-				ps.setString(1, paymentOK);
-				try (ResultSet rs = ps.executeQuery()) {
-					while (rs.next()) {
-						lastId = rs.getString("id");
-					}
-				}
+			
+			
+			String stringSQL ="select * " + 
+					"from [jw_payment] where  (CONVERT(CHAR(10), reg_date, 120) = CONVERT(CHAR(10), getdate(), 120)) "
+					+ "and payment_ok = '"+paymentOK+"'";         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
+			System.out.println(stringSQL);
+			stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rs = stmt.executeQuery(stringSQL);
+			while(rs.next()){
+				//money = rs.getString(2);
+				//money = rs.getString("cyberMoney");
+				userFlag = false;
 			}
-			if (lastId != null) {
-				System.out.println("중복삭제 ==== " + lastId);
-				try (PreparedStatement ps = conn.prepareStatement("DELETE FROM [dbo].[jw_payment] WHERE id = ?")) {
-					ps.setString(1, lastId);
-					ps.executeUpdate();
-				}
+			
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			
 			conn.commit();
-		} catch (Exception e) {
+		
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
-			CyberMoneyLedger.rollbackQuietly(conn);
-		} finally {
-			dbcp.freeConnection(conn);
+		
+		}finally{
+			//this.freeConn();
+			dbcp.freeConnection(conn, stmt, rs);
 		}
+		
+		System.out.println("userFlag ==");
+		return userFlag;
+	}
+	
+	public void setTerminal1(String paymentOK) {
+		//String money = "";
+		
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		 conn  = dbcp.getConnection();
+		
+		try {
+			conn.setAutoCommit(false);
+			
+			
+			String stringSQL ="select * " + 
+					"from [jw_payment] where  (CONVERT(CHAR(10), reg_date, 120) = CONVERT(CHAR(10), getdate(), 120)) "
+					+ "and payment_ok = '"+paymentOK+"'";         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
+			System.out.println(stringSQL);
+			stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rs = stmt.executeQuery(stringSQL);
+			conn.commit();
+			int i =1;
+			String id = "";
+			while(rs.next()){
+				//money = rs.getString(2);
+				//money = rs.getString("cyberMoney");
+				id = rs.getString("id");
+				System.out.println(id);
+				i++;
+			}
+			
+			if(i>1) {
+				
+				System.out.println("중복삭제  ===="+id);
+				stringSQL ="delete   FROM [dbo].[jw_payment] where id = "+id;         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
+				System.out.println(stringSQL);
+				stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+				stmt.executeUpdate(stringSQL);		
+				conn.commit();
+			}
+			
+
+			
+			
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		
+		}finally{
+			//this.freeConn();
+			dbcp.freeConnection(conn, stmt, rs);
+		}
+		
+		System.out.println("userFlag ==");
+	
+	}
+	
+	
+	public void freeConn(){
+		try {
+			if(stmt != null){
+				stmt.close();
+			}
+			if(rs != null){
+				rs.close();
+			}
+		
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//dm.freeConnection("mssql", conn);
 	}
 }

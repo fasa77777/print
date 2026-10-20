@@ -1,42 +1,20 @@
 package com.jetwork.model;
 
-/**
- * 단말기 등록 확인 요청 (/printnuri/postTerminal).
- */
 public class Terminal {
-	/** 단말기 ID (jw_terminal.terminal_id) */
 	String terminalID;
-	/** 단말기 키 */
 	String key;
-	/** 라이선스 */
 	String license;
-	/** 단말기 시리얼 (jw_terminal.serial, ID 와 함께 일치해야 등록된 단말기) */
 	String serial;
-	/** 처리 결과 */
 	String result;
-	/** 검정 토너 정보 */
 	String black;
-	/** 파랑 토너 정보 */
 	String blue;
-	/** 빨강 토너 정보 */
 	String red;
-	/** 노랑 토너 정보 */
 	String yello;	
-	/** 단말기 하드웨어 시리얼 */
 	String terminalSerial;
-	/** 에이전트 버전 */
 	String agentVersion = "1.1.1";
-	/** 단말기 버전 */
-	String terminalVersion = "1052";
 	
 	
 	
-	public String getTerminalVersion() {
-		return terminalVersion;
-	}
-	public void setTerminalVersion(String terminalVersion) {
-		this.terminalVersion = terminalVersion;
-	}
 	public String getAgentVersion() {
 		return agentVersion;
 	}

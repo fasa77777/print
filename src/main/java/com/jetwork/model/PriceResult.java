@@ -1,17 +1,10 @@
 package com.jetwork.model;
 
-/**
- * jw_paper 테이블의 용지 가격 한 줄.
- */
 public class PriceResult {
 	
-	/** 용지 크기 (paper_size) */
 	String A4PaperSize;
-	/** 장당 가격 (paper_price) */
 	String A4PaperPrice;
-	/** 컬러 여부 (paper_colorYN, Y = 컬러, N = 흑백) */
 	String A4Color;
-	/** 처리 결과 */
 	String result;
 	public String getA4PaperSize() {
 		return A4PaperSize;

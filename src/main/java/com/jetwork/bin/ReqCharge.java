@@ -1,9 +1,5 @@
 package com.jetwork.bin;
 
-/**
- * 결제 단말기에 보내는 결제 요청 전문 (작업 코드 4).
- * 본문의 S01=A1 은 "신용 또는 전자화폐 지불결제", S10 은 결제 금액이다. 필드 설명은 아래 주석 참고.
- */
 public class ReqCharge extends ReqMessage {
 /*	
     % S01 = A1 :: 
@@ -23,7 +19,6 @@ public class ReqCharge extends ReqMessage {
     % S30 = "1" : 키인거래 홗성화	
 */
 	
-	/** 결제 금액 (원) */
 	private int price;
 	
 	
