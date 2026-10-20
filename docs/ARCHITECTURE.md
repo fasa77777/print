@@ -130,6 +130,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `db.properties` (jar 와 같은 폴더) 또는 `-Ddb.config=경로` | **운영 서버 권장.** jar 안의 값보다 우선. jar 에 비밀번호가 들어가지 않는다 |
 | `src/main/resources/db.properties` | **Git 에 올리지 않음.** 이클립스에서 실행할 때 쓰기 좋음. `db.properties.example` 을 복사해서 `db.url`, `db.username`, `db.password` 를 채운다. 풀 크기 `db.pool.maxActive` / `db.pool.minIdle` (기본 200 / 10) |
 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 db.properties 보다 우선 |
+| `db.driver` (db.properties) | JDBC 드라이버 클래스. 보통은 쓰지 않음 (기본 MSSQL). 테스트 프로그램 OfflineTest 가 가짜 DB 드라이버를 지정할 때 쓴다 |
 | 실행 옵션 `-Dsocket.server=true` | 결제 단말기 소켓 서버(10020) 시작. 기본은 꺼짐 (jar 와 같음) |
 | 실행 옵션 `-Drelay.baseUrl=...` | 소켓 서버가 결과를 보내는 중계 서버 주소 (기본 `http://pay1.printnuri.com:8090/jetwork`) |
 

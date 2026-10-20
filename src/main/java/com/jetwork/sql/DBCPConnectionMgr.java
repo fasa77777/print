@@ -30,7 +30,6 @@ public class DBCPConnectionMgr {
 
 	private static final Logger logger = LoggerFactory.getLogger(DBCPConnectionMgr.class);
 
-	private static final String JDBC_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 	private static final String POOL_NAME = "jetwork";
 
 	// ---- 풀 설정 ----
@@ -129,7 +128,7 @@ public class DBCPConnectionMgr {
 
 		HikariConfig config = new HikariConfig();
 		config.setPoolName(POOL_NAME);
-		config.setDriverClassName(JDBC_DRIVER);
+		config.setDriverClassName(DbConfig.getDriver()); // 기본 com.microsoft.sqlserver.jdbc.SQLServerDriver
 		config.setJdbcUrl(jdbcURL);
 		config.setUsername(user);
 		config.setPassword(password);

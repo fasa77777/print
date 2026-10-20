@@ -28,8 +28,22 @@
 
 ## 테스트
 
+### 1. DB 없이 자동 테스트 (OfflineTest) — 코드를 고친 뒤 먼저 돌려 보세요
+
+`src/test/java/com/jetwork/test/OfflineTest.java` 우클릭 → **Run As → Java Application**
+
+메모리 위의 가짜 DB·가짜 중계 서버·가짜 결제 단말기를 띄우고, 서버를 그 가짜들에 붙여서(HTTP 18090 포트) 아래를 자동으로 확인합니다. 실제 DB·중계 서버·단말기에는 접속하지 않습니다.
+
+- 모든 HTTP API 의 응답과 DB 기록 (사이버머니 차감·중복·잔액 부족, 카드사명·해외카드, 티머니·캐시비·교통카드, last_dt, 버전 갱신, 프린터)
+- 단말기 소켓(10020): 가격 정책 전문, Xerox 결제의 카드 승인·거절·취소, 티머니 승인·거절, 사이버머니 카드 태그, 중계 서버 오류
+
+끝나면 콘솔에 `통과 51  실패 0` 처럼 나옵니다. 실패가 있으면 맨 아래에 실패한 항목이 다시 나옵니다.
+같은 PC 에서 실제 서버나 결제 단말기 프로그램이 10020·10000 포트를 쓰고 있으면 소켓 테스트는 건너뜁니다.
+
+### 2. 실제 서버·DB 로 확인 (PaymentTestClient)
+
 서버를 띄운 뒤 `src/test/java/com/jetwork/test/PaymentTestClient.java` 를 우클릭 → **Run As → Java Application** 하면
-단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다. 
+단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다.
 
 단말기 ID 등은 **Run Configurations → Arguments** 에 넣습니다.
 
@@ -38,4 +52,3 @@ terminalID=테스트단말기ID serial=시리얼 userCard=테스트카드 socket
 ```
 
 실제 DB 에 기록되므로 테스트용 단말기·카드로만 실행하세요. Postman 을 쓰려면 `test-requests/JetworkServer.postman_collection.json` 을 Import 하면 됩니다.
-
