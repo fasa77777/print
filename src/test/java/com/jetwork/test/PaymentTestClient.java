@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
  *   - 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감된다. 테스트용 단말기·카드로만 실행한다.
  *   - 단말기 확인이 OK 가 되려면 terminalID 와 serial 이 jw_terminal 에 등록되어 있어야 한다.
  *   - Xerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았다.
+ *   - "3-1. 실제 결제 요청 형식" 은 test-requests/real-card-payment.json (실제 에이전트 요청 형식)을 단말기 ID·시리얼·승인번호만 바꿔 보낸다.
  *   - 소켓 테스트는 02(가격 정책) 전문만 보낸다. 04·06 전문은 중계 서버에 실제 결제를 기록하므로 보내지 않는다.
  */
 public class PaymentTestClient {
@@ -132,6 +133,16 @@ public class PaymentTestClient {
 				"terminalID", terminalID, "price", "100", "payOK", newNo(), "craditName", "031", "payType", "N",
 				"payTypeTM", "", "color", "false", "count", "1", "paperSize", "A4")), "result", "OK");
 
+		// 3-1. 실제 결제 에이전트가 보내는 형식 그대로 (subJobData 배열, 숫자·true/false, R01~R30)
+		section("3-1. 실제 결제 요청 형식 (test-requests/real-card-payment.json)");
+		String approval = newApprovalNo();
+		String real = realPaymentJson(approval);
+		expect(postRaw("실제 형식 체크카드 결제 (비씨 026, 승인번호 " + approval.trim() + ")", "/postCraditPayment", real), "result", "OK");
+		expect(postRaw("같은 요청 다시 (같은 승인번호는 한 번만 기록되어야 함)", "/postCraditPayment", real), "result", "OK");
+		System.out.println("   ※ 기록 확인: SELECT payment_type, payment_cardName, payment_pay, payment_totalCount, payment_paperType, payment_ok"
+				+ " FROM jw_payment WHERE terminal_id = '" + terminalID + "' AND payment_ok = '" + approval.trim() + "';");
+		System.out.println("     기대값: 체크카드 / 비씨 카드사 / 40 / 4 / [A4] / " + approval.trim() + "  (1건)");
+
 		// 4. 단말기 소켓 (선택)
 		if (socketTest) {
 			section("4. 단말기 소켓 " + socketHost + ":" + socketPort);
@@ -162,7 +173,11 @@ public class PaymentTestClient {
 	}
 
 	static Map<String, String> post(String name, String path, Map<String, String> body) {
-		String req = toJson(body);
+		return postRaw(name, path, toJson(body));
+	}
+
+	/** JSON 문자열을 그대로 POST 한다 (숫자·true/false·배열이 들어간 실제 에이전트 요청용) */
+	static Map<String, String> postRaw(String name, String path, String req) {
 		System.out.println("▶ " + name + "  POST " + path);
 		System.out.println("   요청: " + req);
 		long t0 = System.currentTimeMillis();
@@ -283,6 +298,51 @@ public class PaymentTestClient {
 			Thread.currentThread().interrupt();
 		}
 		return new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date());
+	}
+
+	/** 실제 형식 결제 요청 파일 (프로젝트 폴더 기준). 없으면 아래 REAL_PAYMENT_SAMPLE 을 쓴다 */
+	static final String REAL_PAYMENT_FILE = "test-requests/real-card-payment.json";
+
+	/** test-requests/real-card-payment.json 과 같은 내용 (파일이 없을 때) */
+	static final String REAL_PAYMENT_SAMPLE = "{\"cmd\":\"pay\",\"color\":true,\"copies\":1,\"docName\":\"[2]Untitled\",\"duplex\":false,"
+			+ "\"jobType\":\"Print\",\"mac\":\"00:00:00:00:00:00\",\"nUp\":1,\"paperSize\":\"[A4]\",\"scanCount\":1,\"serial\":\"TESTSERIAL0001\","
+			+ "\"subJobData\":[{\"cmd\":\"pay\",\"color\":true,\"copies\":2,\"docName\":\"Untitled\",\"duplex\":false,\"jobType\":\"Print\",\"nUp\":1,"
+			+ "\"paperSize\":\"A4\",\"scanCount\":1,\"subJobType\":\"PC\",\"totalAmount\":20,\"totalPages\":2},"
+			+ "{\"cmd\":\"pay\",\"color\":true,\"copies\":2,\"docName\":\"Untitled\",\"duplex\":false,\"jobType\":\"Print\",\"nUp\":1,"
+			+ "\"paperSize\":\"A4\",\"scanCount\":1,\"subJobType\":\"PC\",\"totalAmount\":20,\"totalPages\":2}],"
+			+ "\"subJobType\":\"PC\",\"timeOut\":70,\"totalAmount\":40,\"totalPages\":4,\"terminalID\":\"TEST0001\",\"payment_type\":\"credit_card\","
+			+ "\"S01\":\"A1\",\"S02\":\"40\",\"S03\":\"TEST0001\",\"S09\":\"00\",\"S10\":\"500\",\"S16\":\"45\",\"S23\":\"20211011105926\","
+			+ "\"R01\":\"P\",\"R02\":\"A\",\"R03\":\"0000\",\"R04\":\"0000\",\"R05\":\"026\",\"R06\":\"0000\",\"R07\":\"0000000000000\",\"R08\":\"\","
+			+ "\"R09\":\"00000000    \",\"R10\":\"\",\"R11\":\"Y\",\"R12\":\"026\",\"R13\":\"\",\"R14\":\"000000000   \",\"R15\":\"\",\"R16\":\"d\","
+			+ "\"R17\":\"\",\"R18\":\"00000000\",\"R19\":\"\",\"R20\":\"000000000000\",\"R21\":\"\",\"R22\":\"N\",\"R23\":\"0000-00**-****-0000\","
+			+ "\"R24\":\"\",\"R25\":\"\",\"R26\":\"\",\"R27\":\"\",\"R28\":\"\",\"R29\":\"\",\"R30\":\"\"}";
+
+	/**
+	 * 실제 형식 결제 요청 JSON. 파일(또는 샘플)의 단말기 ID(terminalID, S03)·시리얼·승인번호(R09)를
+	 * 이번 테스트 값으로 바꾼다. 나머지 값(subJobData, 금액, 카드 정보 등)은 그대로 보낸다.
+	 */
+	static String realPaymentJson(String approvalNo) {
+		String jsonText = REAL_PAYMENT_SAMPLE;
+		java.io.File f = new java.io.File(REAL_PAYMENT_FILE);
+		if (f.isFile()) {
+			try {
+				jsonText = new String(java.nio.file.Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+				System.out.println("   (요청 파일 " + f.getAbsolutePath() + ")");
+			} catch (Exception e) {
+				System.out.println("   (" + REAL_PAYMENT_FILE + " 를 읽지 못해 기본 샘플 사용: " + e + ")");
+			}
+		}
+		return jsonText.replaceAll("\"terminalID\"\\s*:\\s*\"[^\"]*\"", "\"terminalID\":\"" + terminalID + "\"")
+				.replaceAll("\"S03\"\\s*:\\s*\"[^\"]*\"", "\"S03\":\"" + terminalID + "\"")
+				.replaceAll("\"serial\"\\s*:\\s*\"[^\"]*\"", "\"serial\":\"" + serial + "\"")
+				.replaceAll("\"R09\"\\s*:\\s*\"[^\"]*\"", "\"R09\":\"" + approvalNo + "\"")
+				.replace("\r", "").replace("\n", "");
+	}
+
+	/** 실제 단말기처럼 숫자 8자리 + 공백 4칸 승인번호 */
+	static String newApprovalNo() {
+		String no = newNo();
+		return no.substring(no.length() - 8) + "    ";
 	}
 
 	static Map<String, String> json(String... kv) {

@@ -174,6 +174,25 @@ public class OfflineTest {
 		p = FakeDbDriver.find("jw_payment", "payment_ok", "P77");
 		check("프린트누리 신용카드·삼성 카드사·500원·3장", p != null && "삼성 카드사".equals(p.get("payment_cardName")) && "500".equals(p.get("payment_pay")) && "3".equals(p.get("payment_totalCount")));
 
+		section("3-1. 실제 결제 요청 형식 (test-requests/real-card-payment.json)");
+		PaymentTestClient.terminalID = "T1";
+		PaymentTestClient.serial = "S1";
+		String approval = PaymentTestClient.newApprovalNo();
+		String real = PaymentTestClient.realPaymentJson(approval);
+		r = postRaw("/postCraditPayment", real);
+		eq("실제 형식(subJobData 배열·숫자·true/false 포함) → OK", r, "result", "OK");
+		postRaw("/postCraditPayment", real);
+		List<Map<String, String>> found = new ArrayList<Map<String, String>>();
+		for (Map<String, String> row : FakeDbDriver.rows("jw_payment")) {
+			if (approval.trim().equals(row.get("payment_ok"))) found.add(row);
+		}
+		check("같은 요청 두 번 → 1건만 기록 (승인번호 뒤 공백은 떼고 비교)", found.size() == 1);
+		p = found.isEmpty() ? new java.util.HashMap<String, String>() : found.get(0);
+		check("체크카드(R11=Y)·비씨 카드사(R12=026)", "체크카드".equals(p.get("payment_type")) && "비씨 카드사".equals(p.get("payment_cardName")));
+		check("금액 40 (totalAmount), 매수 4 (totalPages), 용지 [A4], 컬러 true, 작업 Print",
+				"40".equals(p.get("payment_pay")) && "4".equals(p.get("payment_totalCount")) && "[A4]".equals(p.get("payment_paperType"))
+						&& "true".equals(p.get("payment_colorYN")) && "Print".equals(p.get("payment_printType")));
+
 		section("4. 프린터·주소");
 		eq("등록된 프린터 P1 → OK (갱신)", post("/postPrinter", "serialnumber", "P1", "devid", "D1", "sitename", "홍대"), "result", "OK");
 		eq("새 프린터 P2 → FALSE (등록)", post("/postPrinter", "serialnumber", "P2", "devid", "D2", "sitename", "신촌"), "result", "FALSE");
@@ -330,6 +349,31 @@ public class OfflineTest {
 			con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
 			OutputStream os = con.getOutputStream();
 			os.write(req.getBytes(StandardCharsets.UTF_8));
+			os.close();
+			int st = con.getResponseCode();
+			InputStream is = st < 400 ? con.getInputStream() : con.getErrorStream();
+			String res = is == null ? "" : PaymentTestClient.read(is);
+			Map<String, String> m = PaymentTestClient.parse(res);
+			m.put("_status", String.valueOf(st));
+			m.put("_body", res);
+			return m;
+		} catch (Exception e) {
+			Map<String, String> m = new java.util.LinkedHashMap<String, String>();
+			m.put("_status", "ERR " + e);
+			return m;
+		}
+	}
+
+	static Map<String, String> postRaw(String path, String json) {
+		try {
+			HttpURLConnection con = (HttpURLConnection) new URL(base + path).openConnection();
+			con.setConnectTimeout(5000);
+			con.setReadTimeout(60000);
+			con.setRequestMethod("POST");
+			con.setDoOutput(true);
+			con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+			OutputStream os = con.getOutputStream();
+			os.write(json.getBytes(StandardCharsets.UTF_8));
 			os.close();
 			int st = con.getResponseCode();
 			InputStream is = st < 400 ? con.getInputStream() : con.getErrorStream();
