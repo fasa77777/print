@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * 실행 방법 (이클립스)
  *   이 파일 우클릭 → Run As → Java Application
  *   값을 바꾸려면 아래 "설정" 의 상수를 고치거나, Run Configurations → Arguments 에
- *     baseUrl=http://127.0.0.1:8090/jetwork terminalID=123456 serial=erwerewrwerwer userCard=8E156710
+ *     baseUrl=http://222.122.118.8:8090/jetwork terminalID=123456 serial=erwerewrwerwer userCard=8E156710
  *   처럼 넣는다. socket=true 를 넣으면 단말기 소켓(10020) 접속 테스트도 한다.
  *   (소켓 서버는 실서버 jar 처럼 기본으로 꺼져 있다. 서버를 -Dsocket.server=true 로 실행했을 때만 테스트)
  *
@@ -42,11 +42,11 @@ import java.util.regex.Pattern;
 public class PaymentTestClient {
 
 	// ---------------- 설정 ----------------
-	static String baseUrl = "http://127.0.0.1:8090/jetwork";
+	static String baseUrl = "http://222.122.118.8:8090/jetwork";
 	static String terminalID = "123456";
 	static String serial = "erwerewrwerwer";
 	static String userCard = "8E156710";
-	static String socketHost = "127.0.0.1";
+	static String socketHost = "222.122.118.8";
 	static int socketPort = 10020;
 	static boolean socketTest = false;
 	// --------------------------------------
@@ -77,7 +77,8 @@ public class PaymentTestClient {
 		// 0. 서버 연결
 		if (!serverAlive()) {
 			System.out.println("서버에 연결할 수 없습니다: " + baseUrl);
-			System.out.println(" - JetworkServerApplication 을 실행했는지, 콘솔에 'Tomcat started on port(s): 8090' 이 있는지 확인하세요.");
+			System.out.println(" - 서버가 켜져 있는지, 서버 방화벽에서 8090 포트가 열려 있는지 확인하세요.");
+			System.out.println(" - 내 PC 에서 띄운 서버로 하려면 Arguments 에 baseUrl=http://127.0.0.1:8090/jetwork socketHost=127.0.0.1 을 넣으세요.");
 			return;
 		}
 

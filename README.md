@@ -45,7 +45,8 @@
 서버를 띄운 뒤 `src/test/java/com/jetwork/test/PaymentTestClient.java` 를 우클릭 → **Run As → Java Application** 하면
 단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다.
 
-단말기 ID 등은 **Run Configurations → Arguments** 에 넣습니다.
+기본으로 테스트 서버 `http://222.122.118.8:8090/jetwork` (소켓 222.122.118.8:10020), 단말기 123456 / erwerewrwerwer, 카드 8E156710 으로 보냅니다.
+다른 서버·단말기로 하려면 **Run Configurations → Arguments** 에 넣습니다. (내 PC 에서 띄운 서버: `baseUrl=http://127.0.0.1:8090/jetwork socketHost=127.0.0.1`)
 
 ```
 terminalID=123456 serial=erwerewrwerwer userCard=8E156710 socket=true
