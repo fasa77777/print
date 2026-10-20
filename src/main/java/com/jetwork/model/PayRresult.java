@@ -1,42 +1,25 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package com.jetwork.model;
 
-/**
- * 단말기 등록 확인 응답 (/stech/postTerminal).
- */
 public class PayRresult {
+    String terminalID;
+    String result;
 
-		/** 단말기 ID */
-		String terminalID;
-		/** OK = 등록된 단말기, FALSE = 미등록, ERROR = DB 오류 */
-		String result;
-//		String text;
-//		String reason;
-		
-		public String getTerminalID() {
-			return terminalID;
-		}
-		public void setTerminalID(String terminalID) {
-			this.terminalID = terminalID;
-		}
-		public String getResult() {
-			return result;
-		}
-		public void setResult(String result) {
-			this.result = result;
-		}
-//		public String getText() {
-//			return text;
-//		}
-//		public void setText(String text) {
-//			this.text = text;
-//		}
-//		public String getReason() {
-//			return reason;
-//		}
-//		public void setReason(String reason) {
-//			this.reason = reason;
-//		}
-		
-		
+    public String getTerminalID() {
+        return this.terminalID;
+    }
 
-	}
+    public void setTerminalID(String terminalID) {
+        this.terminalID = terminalID;
+    }
+
+    public String getResult() {
+        return this.result;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
+    }
+}

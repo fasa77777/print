@@ -1,94 +1,89 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package com.jetwork.model;
 
-/**
- * 프린트누리 결제 기록 요청 (/stech/printnuri/payment). 소켓 서버가 단말기 결과를 이 형식으로 만들어 보낸다.
- */
 public class PrintNuriPay {
-//	data.put("terminalID", sD[2]); //S03
-//	data.put("price", sD[9]); //S10
-//	data.put("payOK", sD[2]);//R09
-//	data.put("craditName", "");//R13
-//	data.put("payType","");//R11
-//	data.put("paperSize", "");
-//	data.put("color", "");
-//	data.put("count", "");
-//	ata.put("payTypeTM","");//R33
-	
-	/** 단말기 ID (S03) */
-	String terminalID;
-	/** 결제 금액 (S10) */
-	String price;
-	/** 승인번호 (R09) */
-	String payOK;
-	/** 발급사 코드 (R12) */
-	String craditName;
-	/** 체크카드 여부 (R11, Y = 체크카드) */
-	String payType;
-	/** 컬러 여부 */
-	String color;
-	/** 매수 */
-	String count;
-	/** 용지 크기 */
-	String paperSize;
-	/** 교통카드 구분 (R33, TM = 티머니, EB = 캐시비) */
-	String payTypeTM;
-	/** 카드번호 (사용하지 않음) */
-	String cardNum;
-	
-	public String getPayTypeTM() {
-		return payTypeTM;
-	}
-	public void setPayTypeTM(String payTypeTM) {
-		this.payTypeTM = payTypeTM;
-	}
-	public String getTerminalID() {
-		return terminalID;
-	}
-	public void setTerminalID(String terminalID) {
-		this.terminalID = terminalID;
-	}
-	public String getPrice() {
-		return price;
-	}
-	public void setPrice(String price) {
-		this.price = price;
-	}
-	public String getPayOK() {
-		return payOK;
-	}
-	public void setPayOK(String payOK) {
-		this.payOK = payOK;
-	}
-	public String getCraditName() {
-		return craditName;
-	}
-	public void setCraditName(String craditName) {
-		this.craditName = craditName;
-	}
-	public String getPayType() {
-		return payType;
-	}
-	public void setPayType(String payType) {
-		this.payType = payType;
-	}
-	public String getColor() {
-		return color;
-	}
-	public void setColor(String color) {
-		this.color = color;
-	}
-	public String getCount() {
-		return count;
-	}
-	public void setCount(String count) {
-		this.count = count;
-	}
-	public String getPaperSize() {
-		return paperSize;
-	}
-	public void setPaperSize(String paperSize) {
-		this.paperSize = paperSize;
-	}
-	
-	
+    String terminalID;
+    String price;
+    String payOK;
+    String craditName;
+    String payType;
+    String color;
+    String count;
+    String paperSize;
+    String payTypeTM;
+    String cardNum;
+
+    public String getPayTypeTM() {
+        return this.payTypeTM;
+    }
+
+    public void setPayTypeTM(String payTypeTM) {
+        this.payTypeTM = payTypeTM;
+    }
+
+    public String getTerminalID() {
+        return this.terminalID;
+    }
+
+    public void setTerminalID(String terminalID) {
+        this.terminalID = terminalID;
+    }
+
+    public String getPrice() {
+        return this.price;
+    }
+
+    public void setPrice(String price) {
+        this.price = price;
+    }
+
+    public String getPayOK() {
+        return this.payOK;
+    }
+
+    public void setPayOK(String payOK) {
+        this.payOK = payOK;
+    }
+
+    public String getCraditName() {
+        return this.craditName;
+    }
+
+    public void setCraditName(String craditName) {
+        this.craditName = craditName;
+    }
+
+    public String getPayType() {
+        return this.payType;
+    }
+
+    public void setPayType(String payType) {
+        this.payType = payType;
+    }
+
+    public String getColor() {
+        return this.color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public String getCount() {
+        return this.count;
+    }
+
+    public void setCount(String count) {
+        this.count = count;
+    }
+
+    public String getPaperSize() {
+        return this.paperSize;
+    }
+
+    public void setPaperSize(String paperSize) {
+        this.paperSize = paperSize;
+    }
 }

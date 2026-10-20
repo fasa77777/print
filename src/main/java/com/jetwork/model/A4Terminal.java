@@ -1,29 +1,34 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package com.jetwork.model;
 
-/**
- * 가격 정책 요청 (/stech/printnuri/pricepolicy 요청 본문).
- */
 public class A4Terminal {
-	/** 단말기 ID */
-	String terminalID;
-	/** 에이전트 버전 (jw_terminal.agent_version 에 저장) */
-	String agentVersion;
+    String terminalID;
+    String agentVersion;
+    String version;
 
-	public String getAgentVersion() {
-		return agentVersion;
-	}
+    public String getVersion() {
+        return this.version;
+    }
 
-	public void setAgentVersion(String agentVersion) {
-		this.agentVersion = agentVersion;
-	}
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
-	public String getTerminalID() {
-		return terminalID;
-	}
+    public String getAgentVersion() {
+        return this.agentVersion;
+    }
 
-	public void setTerminalID(String terminalID) {
-		this.terminalID = terminalID;
-	}
-	
+    public void setAgentVersion(String agentVersion) {
+        this.agentVersion = agentVersion;
+    }
 
+    public String getTerminalID() {
+        return this.terminalID;
+    }
+
+    public void setTerminalID(String terminalID) {
+        this.terminalID = terminalID;
+    }
 }

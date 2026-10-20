@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "JetworkServer 테스트 결제 요청 (/stech)",
-    "description": "결제 서버 API 테스트용 요청 모음.\n\n변수(컬렉션 → Variables)\n- baseUrl: 서버 주소 (기본 http://localhost:8090/stech)\n- terminalID / serial: jw_terminal 에 등록된 **테스트용** 단말기\n- userCard: 테스트용 사이버머니 카드번호\n\n⚠️ 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다. 운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.\n\ncyberNo·승인번호(R09)는 {{$timestamp}} 로 매번 바뀌어서 중복으로 걸러지지 않습니다.\n\nXerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았습니다.",
+    "name": "JetworkServer 테스트 결제 요청 (/jetwork)",
+    "description": "결제 서버 API 테스트용 요청 모음.\n\n변수(컬렉션 → Variables)\n- baseUrl: 서버 주소 (기본 http://localhost:8090/jetwork)\n- terminalID / serial: jw_terminal 에 등록된 **테스트용** 단말기\n- userCard: 테스트용 사이버머니 카드번호\n\n⚠️ 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다. 운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.\n\ncyberNo·승인번호(R09)는 {{$timestamp}} 로 매번 바뀌어서 중복으로 걸러지지 않습니다.\n\nXerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았습니다.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -138,7 +138,7 @@
                 }
               }
             },
-            "description": "잔액이 100원 이상이면 차감 후 OK. 잔액 부족 FAIL(no money), 미등록 카드 FAIL(no card), 같은 cyberNo 재요청 FAIL(duplicate). ⚠️ 실제 잔액이 차감된다."
+            "description": "실서버 jar 기준: 차감 후 잔액이 0원보다 크면 OK. 잔액 부족 FAIL(no money), 미등록 카드·결제 후 잔액 0원·같은 cyberNo 재요청 FAIL(no card). ⚠️ 실제 잔액이 차감된다."
           },
           "response": []
         },
@@ -213,7 +213,7 @@
           "response": []
         },
         {
-          "name": "체크카드 (카드사 코드 없음 → 해외카드)",
+          "name": "체크카드 (카드사 코드 없음 → 카드사명 빈 값)",
           "request": {
             "method": "POST",
             "header": [
@@ -240,7 +240,7 @@
                 }
               }
             },
-            "description": "카드사명을 모르면 '해외카드' 로 기록."
+            "description": "실서버 jar 는 카드사명을 모르면 빈 값으로 기록."
           },
           "response": []
         },
@@ -336,7 +336,7 @@
                 }
               }
             },
-            "description": "TM·EB 가 아니면 '교통카드' 로 기록."
+            "description": "실서버 jar 는 TM·EB 가 아니면 기록하지 않음 (응답은 OK)."
           },
           "response": []
         },
@@ -412,7 +412,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8090/stech"
+      "value": "http://localhost:8090/jetwork"
     },
     {
       "key": "terminalID",

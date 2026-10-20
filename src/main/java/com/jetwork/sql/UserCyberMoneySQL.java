@@ -1,56 +1,73 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package com.jetwork.sql;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-
 import com.jetwork.bin.ConnectionPool;
+import com.jetwork.sql.DBCPConnectionMgr;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-/** 사이버머니 잔액 조회 (/stech/postCyberMoney). 처음 보는 카드는 0원으로 등록한다. */
 public class UserCyberMoneySQL {
+    private Connection conn;
+    private Statement stmt;
+    private ResultSet rs;
+    private boolean userFlag = true;
 
-	private static final Logger logger = LoggerFactory.getLogger(UserCyberMoneySQL.class);
+    public String getUser(String terminalID, String userID) {
+        String money = "";
+        DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+        this.conn = dbcp.getConnection();
+        try {
+            try {
+                this.conn.setAutoCommit(false);
+                String stringSQL = " SELECT * FROM [dbo].[cybermoney] WHERE [cardNumber] = '" + userID + "'";
+                this.stmt = this.conn.createStatement(1004, 1007);
+                this.rs = this.stmt.executeQuery(stringSQL);
+                while (this.rs.next()) {
+                    money = this.rs.getString("cyberMoney");
+                    this.userFlag = false;
+                }
+                if (this.userFlag) {
+                    stringSQL = " SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = '" + terminalID + "'";
+                    this.stmt = this.conn.createStatement(1004, 1007);
+                    this.rs = this.stmt.executeQuery(stringSQL);
+                    String franID = "";
+                    while (this.rs.next()) {
+                        System.out.println(this.rs.getString(3));
+                        franID = this.rs.getString(3);
+                    }
+                    System.out.println(franID);
+                    String insertSQL = "INSERT INTO [dbo].[cybermoney] ([cardNumber],[cyberMoney],[fran_id],[reg_date]) VALUES  ('" + userID + "',0,'" + franID + "',getdate());";
+                    this.stmt.executeUpdate(insertSQL);
+                    money = "0";
+                }
+                this.conn.commit();
+            }
+            catch (SQLException e) {
+                e.printStackTrace();
+                dbcp.freeConnection(this.conn, this.stmt, this.rs);
+            }
+        }
+        finally {
+            dbcp.freeConnection(this.conn, this.stmt, this.rs);
+        }
+        return money;
+    }
 
-	/**
-	 * @param terminalID 가맹점을 찾을 단말기 ID (컨트롤러는 요청의 userID 를 넘긴다)
-	 * @param card       카드번호
-	 * @return 잔액 문자열. 새로 등록했으면 "0", 오류면 빈 문자열
-	 */
-	public String getUser(String terminalID, String card) {
-		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		Connection conn = dbcp.getConnection();
-		if (conn == null) {
-			return "";
-		}
-		try {
-			conn.setAutoCommit(false);
-
-			String money = null;
-			try (PreparedStatement ps = conn.prepareStatement(
-					"SELECT cyberMoney FROM [dbo].[cybermoney] WHERE [cardNumber] = ?")) {
-				ps.setString(1, card);
-				try (ResultSet rs = ps.executeQuery()) {
-					while (rs.next()) {
-						money = rs.getString("cyberMoney");
-					}
-				}
-			}
-
-			if (money == null) {
-				CyberMoneyLedger.registerCard(conn, card, terminalID);
-				money = "0";
-			}
-			conn.commit();
-			return money;
-		} catch (Exception e) {
-			logger.error("UserCyberMoneySQL 처리 중 오류", e);
-			CyberMoneyLedger.rollbackQuietly(conn);
-			return "";
-		} finally {
-			dbcp.freeConnection(conn);
-		}
-	}
+    public void freeConn() {
+        try {
+            if (this.stmt != null) {
+                this.stmt.close();
+            }
+            if (this.rs != null) {
+                this.rs.close();
+            }
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }

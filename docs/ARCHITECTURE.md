@@ -1,176 +1,87 @@
 # JetworkServer 코드 구조
 
-> 이 문서는 /stech 버전(API 주소 `/stech/...`) 기준입니다.
+이 저장소의 `src/main/java` 는 **실서버에서 돌고 있는 `JetworkServer-0.0.10-SNAPSHOT.jar` (2022-04-18 빌드)를 역컴파일한 소스**입니다.
+동작은 실서버 jar 와 같습니다. jar 와 다른 점은 아래 "5. jar 와 다른 점" 세 가지뿐입니다.
 
-무인 프린트·복사기 매장의 **결제 서버**입니다. 복사기 옆 결제 단말기와 복사기 에이전트가 이 서버에 결제·단말기·프린터 정보를 보내면, 서버는 MSSQL DB에 기록하고 결과를 돌려줍니다.
-
-- Spring Boot 2.3.1, Java 8, Maven
-- DB: Microsoft SQL Server (DB 이름 `GWS`, 프린터 정보는 `SONTECH`)
-- 포트: HTTP API `8090`, 결제 단말기 소켓 `10020`
+이전에 GitHub 에서 고쳤던 버전(`/stech` 주소, 버그 수정 포함)은 `fix/full-review` 브랜치(PR #11)에 남아 있습니다.
 
 ## 1. 전체 흐름
 
 ```
- 복사기 에이전트 / 단말기 ──HTTP(JSON)──▶ [HTTP API :8090]  ──▶ MSSQL
-                                            PostJetworkController
-                                                 │
-                                                 │ (Xerox 결제만) 소켓으로 결제 요청
-                                                 ▼
- 결제 단말기(카드·티머니·사이버머니) ◀──TCP :10000── 서버
- 결제 단말기 ──TCP :10020──▶ [소켓 서버] SocketServerDriver
-                                  │ 결과를 JSON 으로 변환
-                                  ▼
-                       중계 서버 pay1.printnuri.com:8090/jetwork  (HTTP POST)
+단말기·복사기 에이전트 ──HTTP(8090)──▶ PostJetworkController (/jetwork/...) ──▶ com.jetwork.sql.*SQL ──▶ MSSQL
+                                                                                  (DBCPConnectionMgr 커넥션 풀)
+결제 단말기 ──소켓(10020)──▶ SocketServerDriver   ※ 실서버 jar 는 시작하지 않음 (-Dsocket.server=true 일 때만)
 ```
 
-서버는 두 가지 일을 동시에 합니다.
+## 2. HTTP API (`PostJetworkController`, 주소 앞에 `/jetwork`)
 
-1. **HTTP API** (`com.jetwork.bin.PostJetworkController`): 단말기·에이전트가 JSON으로 요청하면 DB에 기록하고 응답합니다.
-2. **소켓 서버** (`com.stech.Network.SocketServerDriver`): 결제 단말기가 보내는 바이너리 전문을 받아 해석하고, 결과를 중계 서버로 다시 HTTP POST 합니다. 접속 받는 스레드 1개와 처리용 작업 스레드 50개로 단말기를 동시에 처리합니다.
-
-## 2. 패키지 구성
-
-| 패키지 | 역할 | 주요 클래스 |
+| 주소 | 요청 모델 | 하는 일 |
 |---|---|---|
-| `com.jetwork.bin` | 서버 시작, HTTP API, 단말기 전문 조립 | `JetworkServerApplication`, `PostJetworkController`, `ConnectionPool`, `ReqMessage`, `ReqCharge` |
-| `com.jetwork.sql` | DB 접속과 SQL 실행 | `DbConfig`, `DBCPConnectionMgr`, `*SQL` 클래스 |
-| `com.jetwork.model` | 요청·응답 JSON 에 쓰는 데이터 클래스 | `Terminal`, `PaymentKicc`, `PaymentResult` 등 |
-| `com.stech.Network` | 결제 단말기 소켓 서버 | `SocketServerDriver` |
-| `co.kr.json` | 단말기 결과를 JSON 으로 만들어 중계 서버로 전송 | `JSonForm`~`JSonForm3`, `JsonHttpClient` |
-| `co.kr.up.util` | 바이트·16진수 변환 도구 | `Bytes`, `HexUtils` |
+| `/postTerminal` | Terminal | jw_terminal 에 단말기 ID+시리얼이 있으면 agent_version·terminalVersion·update 갱신 후 OK, 없으면 FALSE |
+| `/postCyberMoney` | CyberMoney | 사이버머니 잔액 조회. 처음 보는 카드는 0원으로 등록 |
+| `/postCyberMoneyPayment` | PaymentKicc | 사이버머니 결제 (아래 응답 규칙) |
+| `/postCraditPayment` | PaymentKicc | 카드(R11=Y/N)·티머니(R33=TM)·캐시비(EB) 결제 기록. 응답은 항상 OK |
+| `/kyocera/postCyberMoneyPayment` | PaymentKyocera | 교세라 사이버머니 결제 (색상 1/2 → true/false) |
+| `/kicc/postCraditPayment` | PaymentCreaditKicc | KICC 단말기 결제 기록. 응답은 항상 OK |
+| `/printnuri/pricepolicy` | A4Terminal | jw_paper 의 A4 흑백·컬러 가격 조회, 단말기 버전 갱신 |
+| `/printnuri/payment` | PrintNuriPay | 프린트누리 결제 기록. 응답은 항상 OK |
+| `/xerox/xeroxPayment` | XeroxPay | 결제 단말기(10000번 포트)에 결제 요청 후 결과 대기. 소켓 서버가 꺼져 있으면 동작하지 않음 |
+| `/postPrinter` | Printer | 프린터 상태를 printer 테이블에 등록·갱신 |
 
-> Spring 은 `JetworkServerApplication` 이 있는 `com.jetwork.bin` 패키지 아래만 스캔합니다. 새 컨트롤러는 이 패키지(또는 하위 패키지)에 만들어야 동작합니다.
+사이버머니 결제 응답 (`/postCyberMoneyPayment`, `/kyocera/postCyberMoneyPayment`)
 
-## 3. 서버 시작 순서 (`JetworkServerApplication.main`)
-
-1. Spring Boot 웹 서버 시작 (포트 8090)
-2. `ConnectionPool.connection()` 으로 DBCP 커넥션 풀 생성
-3. `SocketServerDriver` 를 별도 스레드로 시작 (포트 10020)
-4. DB 접속을 한 번 확인하고 결과를 출력
-
-## 4. HTTP API
-
-모든 API 는 `POST`, `Content-Type: application/json` 입니다. 컨트롤러에 `@RequestMapping("/stech")` 가 붙어 있어서 모든 주소 앞에 `/stech` 가 붙습니다.
-
-| 주소 | 하는 일 | 요청 모델 | 응답 모델 | 사용하는 SQL 클래스 |
-|---|---|---|---|---|
-| `/stech/postTerminal` | 단말기 등록 확인, 에이전트 버전 갱신 | `Terminal` | `PayRresult` | `TerminalInfoSQL` |
-| `/stech/postCyberMoney` | 사이버머니 잔액 조회 (카드가 없으면 0원으로 새로 등록) | `CyberMoney` | `CyberMoney` | `UserCyberMoneySQL` |
-| `/stech/postCyberMoneyPayment` | 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKicc` | `PaymentResult` | `CyberMoneyPaymentSQL` |
-| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL` |
-| `/stech/kicc/postCraditPayment` | KICC 단말기 카드 결제 기록 | `PaymentCreaditKicc` | `PaymentResult` | `KiccCreaditPaymentSQL` |
-| `/stech/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKyocera` | `PaymentResult` | `CyberMoneyKyoceraPaymentSQL` |
-| `/stech/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
-| `/stech/printnuri/payment` | 프린트누리 결제 기록 | `PrintNuriPay` | `PriceSendResult` | `PrintNuriCreaditPaymentSQL` |
-| `/stech/xerox/xeroxPayment` | Xerox 출력 결제: 단말기에 결제를 요청하고 결과가 올 때까지 대기 (본문에 `terminalID` 를 넣으면 그 단말기로 보냄) | `XeroxPay` | `PriceXeroxSendResult` | (소켓 통신) |
-
-### Xerox 결제 흐름 (`/xerox/xeroxPayment`)
-
-단말기별 상태(IP, 단말기 ID, 진행 중인 결제 금액·컬러·매수, 결제 결과)는 `TerminalRegistry` 에 단말기(소켓 접속 IP)마다 따로 있습니다.
-
-1. 결제할 단말기를 정한다: 요청 본문의 `terminalID`(선택) → 요청을 보낸 IP 의 단말기 → 둘 다 모르면 마지막으로 접속한 단말기(경고 로그)
-2. 그 단말기의 이전 결과를 지우고 금액·컬러·매수를 저장 (`TerminalState.startPayment`)
-3. 그 단말기 IP 의 10000번 포트로 결제 요청 전문(`ReqCharge`) 전송
-4. 단말기가 10020번 소켓 서버로 결과를 보내면 `SocketServerDriver` 가 **그 단말기의** 결과로 기록
-5. API 는 그 단말기의 결과를 최대 120초 기다렸다가 `OK` / `NO` 응답
-
-## 5. 결제 단말기 소켓 전문 (`SocketServerDriver`, 포트 10020)
-
-받은 데이터의 7번째 바이트(인덱스 6)가 작업 코드입니다.
-
-| 코드 | 의미 | 처리 |
+| 상황 | result | reason |
 |---|---|---|
-| `02` | 가격 정책 요청 | 인덱스 44부터 10바이트를 단말기 ID 로 읽고, 처음 한 번만 `JSonForm1` → `/printnuri/pricepolicy` 요청 |
-| `04` | 카드·티머니 결제 결과 | `;` 로 나뉜 필드를 읽어 `R04=0000` 이면 승인(`JSonForm` → `/printnuri/payment`), `7000~9999` 면 거절, `CANCEL` 이면 취소. 티머니는 `R32` 첫 바이트가 `FF` 면 거절, 아니면 승인(`JSonForm3`) |
-| `06` | 사이버머니 카드 태그 | 인덱스 8부터 4바이트를 카드번호(16진수)로 읽어 `JSonForm2` → `/kyocera/postCyberMoneyPayment` 요청, 응답의 `result` 로 승인 여부 결정 |
-| `09` | 기타 | 읽기만 하고 처리하지 않음 |
+| 차감 후 잔액이 0원보다 큼 | OK | ok |
+| 차감 후 잔액이 0원보다 작음 | FAIL | no money |
+| 미등록 카드 (0원으로 새로 등록), 결제 후 잔액이 정확히 0원, 같은 카드·cyberNo 로 이미 결제됨 | FAIL | no card |
 
-단말기로 보내는 결제 요청 전문은 `ReqMessage` 가 만듭니다: `STX(0x02) + 길이(2) + 순번 + CMD(0xFB) + GCD(0x14) + 작업코드 + 본문 + ETX(0x03) + CRC(2)`. 본문 예: `S01=A1;S02=40;S09=00;S10=금액;`
+`/postCyberMoneyPayment` 응답의 `balance` 는 숫자다 (잔액 부족이면 차감 후 값 = 음수).
 
-## 6. DB 테이블
+`com.jetwork.controller` 패키지와 `com.jetwork.bin.PostAPIController` 는 Spring 이 찾지 못하는 위치이거나 `@RestController` 가 없어서 실서버에서도 쓰이지 않는다.
 
-코드에서 쓰는 테이블과 컬럼입니다.
+## 3. DB
 
-| 테이블 | 용도 | 코드에 나오는 컬럼 |
-|---|---|---|
-| `jw_terminal` | 결제 단말기 | `terminal_id`, `serial`, `fran_id`(3번째 컬럼), `agent_version`, `update`, `last_dt`(마지막 결제 시각) |
-| `jw_franchise` | 가맹점(매장) | `fran_id`, `fran_name` |
-| `jw_paper` | 단말기별 용지 가격 | `terminalID`, `paper_size`, `paper_colorYN`, `paper_price` |
-| `jw_payment` | 결제 내역 | `id`, `terminal_id`, `payment_pay`, `payment_type`, `payment_paperType`, `payment_colorYN`, `payment_ok`(승인번호), `payment_printType`, `payment_cardName`, `payment_totalCount`, `userCard`, `cyberNo`, `reg_date` |
-| `cybermoney` | 사이버머니 잔액 | `cardNumber`, `cyberMoney`, `fran_id`, `reg_date` |
-| `SONTECH.dbo.printer` | 프린터 상태 | `devid`, `sitename`, `desc1`, `errmsg`, `modelname`, `total`, `mono`, `color`, `black`, `cyan`, `magenta`, `yellow`, `devicestatus`, `printerstatus`, `coverstatus`, `serialnumber`, `macaddr`, `regdate` |
+- 커넥션 풀: `DBCPConnectionMgr` (commons-dbcp 1.4, 최대 200 / 유휴 50)
+- Spring DataSource(Hikari)도 `application.properties` 의 `spring.datasource.*` 로 만들어지지만 코드에서 쓰지 않는다 (실서버 jar 와 같음)
+- `DBConnectionManager` 는 쓰이지 않는 예전 커넥션 관리 클래스 (`com/jetwork/sql/db.properties` 의 `ip` 를 읽음)
 
-## 7. 설정
+| 테이블 | 쓰는 곳 |
+|---|---|
+| jw_terminal | 단말기 확인, 버전 갱신, 가맹점 ID |
+| jw_payment | 모든 결제 기록 |
+| cybermoney | 사이버머니 잔액 |
+| jw_franchise | 사이버머니 결제 기록의 가맹점명 |
+| jw_paper | 단말기별 용지 가격 |
+| printer | 프린터 상태 |
+
+## 4. 설정
 
 | 파일 | 내용 |
 |---|---|
-| `src/main/resources/application.properties` | 포트(8090), 로그 레벨 |
-| `src/main/resources/db.properties` | **DB 주소·아이디·비밀번호. Git 에 올리지 않음.** `db.properties.example` 을 복사해서 만든다 |
-| 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 `db.properties` 보다 우선 |
+| `src/main/resources/application.properties` | 포트 8090, Spring DataSource (접속 정보는 db.properties 에서) |
+| `src/main/resources/db.properties` | **Git 에 올리지 않음.** `db.properties.example` 을 복사해서 `db.url` / `db.username` / `db.password` 를 채운다 |
+| 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 db.properties 보다 우선 |
+| 실행 옵션 `-Dsocket.server=true` | 결제 단말기 소켓 서버(10020) 시작. 기본은 꺼짐 (실서버 jar 와 같음) |
 
-DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션은 `DBCPConnectionMgr`(commons-dbcp 풀, 이름 `jetwork`)가 만들고, 각 `*SQL` 클래스가 `ConnectionPool.getInst().getConnection()` 으로 빌려 씁니다. Spring Boot 의 DataSource 자동 설정은 쓰지 않아서 꺼 두었습니다.
+## 5. jar 와 다른 점
 
-커넥션 풀 설정 (`DBCPConnectionMgr`, 크기는 `db.properties` 에서 변경 가능)
+1. **DB 접속 정보**: jar 는 `DBCPConnectionMgr`, `DBConnectionManager`, `application.properties` 에 접속 정보가 직접 적혀 있었다. 소스에서 빼고 `DbConfig`(새 클래스)가 db.properties·환경변수에서 읽는다. `JetworkServerApplication` 에 `@PropertySource("classpath:db.properties")` 를 붙였다.
+2. **소켓 서버 옵션**: `-Dsocket.server=true` 로 켤 수 있게 했다. 옵션이 없으면 jar 와 같이 시작하지 않는다.
+3. **SocketServerDriver 의 try 블록**: 역컴파일 결과가 그대로는 컴파일되지 않아 원래 형태인 try-with-resources 로 고쳐 썼다. 동작은 같다.
 
-| 설정 | 값 | 의미 |
-|---|---|---|
-| 최대 커넥션 | 100 (`db.pool.maxActive`) | 동시에 빌릴 수 있는 최대 개수. 요청 스레드가 최대 200개라 그 이상은 필요 없다 |
-| 최대 유휴 커넥션 | 20 (`db.pool.maxIdle`) | 쉬는 커넥션을 남겨 두는 최대 개수 |
-| 대기 시간 | 10초 | 풀이 가득 찼을 때 기다리는 시간. 넘으면 커넥션 없음(null) → 결제는 FAIL/error 응답 |
-| 검증 쿼리 | `SELECT 1` | 빌려주기 전과 쉬는 동안 커넥션이 살아 있는지 확인 |
-| 유휴 정리 | 1분마다 점검, 3분 이상 쉰 커넥션 닫기 | 방화벽이 끊은 커넥션을 미리 정리 |
-| 접속·응답·잠금 타임아웃 | `loginTimeout=10`, `socketTimeout=15000`, `lockTimeout=5000` | DB URL 에 값이 없을 때 자동으로 붙임. 다른 연결의 잠금은 5초까지만 기다린다 |
-| 문자열 파라미터 | `sendStringParametersAsUnicode=false` | VARCHAR 로 보내서 인덱스를 탄다 (NVARCHAR 로 보내면 테이블 전체를 읽고 잠금에 걸리기 쉽다) |
+새로 컴파일한 클래스를 다시 역컴파일해 jar 의 클래스와 비교했고, 위 세 가지 외에는 컴파일러 차이(반복문 모양, 문자열 상수 합치기)뿐이다.
 
-중계 서버 주소는 `co.kr.json.JsonHttpClient.BASE_URL` 에 있습니다.
+## 6. 실서버 jar 에 있는 알려진 문제 (그대로 둠)
 
-## 8. 고친 문제와 남은 문제
+jar 와 똑같이 맞췄기 때문에 아래 문제도 그대로 있다. 고친 버전은 PR #11 참고.
 
-### 고친 문제
-
-| 문제 | 수정 내용 |
-|---|---|
-| SQL 인젝션 | 모든 SQL 을 `PreparedStatement` 로 바꿨다. 공통 쿼리는 `CyberMoneyLedger`, `CardPaymentLedger` 에 모았다 |
-| 사이버머니 결제가 항상 OK | 결제 결과를 `CyberMoneyResult`(OK / NO_CARD / INSUFFICIENT / DUPLICATE / ERROR)로 돌려주고 그대로 응답한다 |
-| 잔액 = 금액이면 차감 안 됨 | 잔액이 금액 이상이면 차감한다 (0원이 될 수 있음) |
-| 동시 결제 시 이중 사용 | 잔액 확인과 차감을 `UPDATE ... WHERE cyberMoney >= 금액` 한 번으로 처리한다 |
-| DB 오류·금액 형식 오류 시 500 에러 | ERROR 상태로 `FAIL` 응답하고, 트랜잭션을 롤백한다 |
-| 미등록 단말기도 OK | `/postTerminal` 은 `jw_terminal` 에 단말기 ID 와 시리얼이 함께 등록된 경우만 `OK`, 아니면 `FALSE`, DB 오류면 `ERROR` 로 응답하고 경고 로그를 남긴다 |
-| 서버 시작 직후 DB 요청 실패 | 웹 서버가 먼저 뜨고 커넥션 풀은 그 뒤에 만들어져, 그 사이 들어온 요청은 NullPointerException 이 났다. 이제 풀을 처음 쓸 때 만든다 |
-| 끊긴 커넥션 재사용 | DB 재시작이나 네트워크 끊김 후에도 죽은 커넥션을 계속 빌려줬다. 이제 `SELECT 1` 로 확인 후 빌려준다 |
-| 커넥션 고갈 시 무한 대기 | 풀이 가득 차면 요청이 끝없이 기다렸다. 이제 10초 후 실패 처리한다 |
-| 커넥션 풀 최대값 20000 | 기본 100 으로 줄이고 `db.properties` 에서 바꿀 수 있게 했다 (단말기 4000대 기준) |
-| 카드 결제마다 1초 대기 | 중복 승인번호를 막으려고 1초 기다린 뒤 지우던 `PaymentCK` 를 없애고, 승인번호별 잠금 안에서 확인·기록한다. 승인번호가 비어 있으면 중복 확인 없이 기록한다 (예전에는 하루 첫 건 말고 버려졌다) |
-| 가맹점 ID 를 3번째 컬럼으로 읽음 | `jw_terminal` 에서 `fran_id` 이름의 컬럼을 찾아 읽는다 (없을 때만 3번째 컬럼) |
-| 중계 서버 주소 확인 | 중계 서버(pay1.printnuri.com)에 `/jetwork/printnuri/pricepolicy`, `/jetwork/printnuri/payment`, `/jetwork/kyocera/postCyberMoneyPayment` 가 있는 것을 확인했다 (GET → 405). 지금 주소가 맞다 |
-| 소켓 서버가 단말기를 하나씩 처리 | 접속 하나를 중계 서버 HTTP 요청까지 끝내야 다음 단말기를 받았다. 이제 작업 스레드 50개가 동시에 처리하고, 밀리면 1000개까지 줄을 세운다 |
-| 단말기 정보가 서버 전체에 하나 | 단말기 IP·ID·진행 중인 결제·결과를 static 변수 하나로 같이 써서, 단말기가 여러 대면 Xerox 결제 요청이 다른 단말기로 가거나 티머니·사이버머니가 다른 단말기 ID·금액으로 기록됐다. 단말기(IP)별 `TerminalState` 로 나눴다 |
-| 가격 정책 요청이 서버 시작 후 한 번만 | 단말기마다 처음 한 번(성공할 때까지) 요청한다 |
-| 티머니 이중 기록 | R32 가 있는 전문은 티머니로만 처리하고 R04 를 보지 않아, 카드 결제로 한 번 더 기록되지 않는다 |
-| 로그 | `System.out` 과 `printStackTrace` 를 SLF4J `logger` 로 통일하고, 한 요청에 한 줄로 정리했다. 원본 전문·중계 서버 응답은 debug 레벨 |
-| 스레드 간 공유 상태가 안 보이던 문제 | 소켓 스레드가 바꾼 결제 결과(`chk`, `chk1`)를 HTTP 스레드가 못 볼 수 있었다. 공유 변수를 `volatile` 로 바꿨다 |
-| 카드사명 없는 결제 | 신용·체크카드 결제에서 발급사 코드가 없거나 목록에 없으면 카드사명을 빈 값 대신 `해외카드` 로 기록한다 (`CardCompanyName.getCardName`). 티머니·캐시비는 그대로 둔다 |
-| 결제번호 중복 차감 | 사이버머니 결제(`/postCyberMoneyPayment`)도 같은 카드·결제번호(`cyberNo`)로 이미 처리된 결제면 차감하지 않고 FAIL(`duplicate`) 로 응답한다 |
-| 단말기 마지막 결제 시각 | 결제 내역(`jw_payment`)이 정상 등록되면 그 단말기의 `jw_terminal.last_dt` 를 현재 시각으로 갱신한다. 결제 기록을 먼저 커밋한 뒤 갱신하므로, 갱신이 실패해도 결제 기록은 남는다 |
-| 기타 교통카드 결제 누락 | `/postCraditPayment` 에서 카드가 아니면서 티머니(TM)·캐시비(EB)도 아닌 교통카드 결제는 기록 없이 버려졌다. 이제 결제 종류·카드사명 모두 `교통카드` 로 기록한다 |
-| 티머니 판정 누락 | `JSonForm` 이 `R33=TM` 처럼 접두어가 붙은 값을 보내 티머니 결제가 신용카드로 기록됐다. 접두어를 떼고 보낸다 |
-| 소켓 전문이 나눠 도착하면 결과 누락 | 한 번만 읽어서 뒷부분(R04 등)이 잘리면 승인을 못 봤다. 헤더 길이·ETX 까지 이어서 읽는다 |
-| 빈 필드 하나에 결제 기록이 엉뚱한 값으로 | `JSonForm` 이 위치(`sD[13]` 등)로 값을 꺼내 승인번호 자리에 `R08=` 같은 값이 들어갔다. 키(S03, R09 등)로 찾는다 |
-| 0000·7000~9999 외 응답 코드면 결과 대기 | R04 가 0000 이 아니면 모두 거절로 처리해 Xerox 결제가 120초를 기다리지 않는다 |
-| R32 빈 값이면 예외 | 빈 R32 는 티머니가 아닌 것으로 보고 넘어간다 |
-| 중계 서버가 멈추면 소켓 서버 전체가 멈춤 | 중계 서버 HTTP 요청에 접속 5초·응답 15초 제한 |
-| 단말기 소켓 무한 대기 | 소켓 서버가 한 번에 한 단말기씩 처리하는데 읽기 타임아웃이 없어, 데이터를 안 보내는 단말기 하나가 전체를 막을 수 있었다. 10초 타임아웃을 넣었다 |
-| 쓰지 않는 Spring 커넥션 풀 | 아무도 쓰지 않는 Spring DataSource(Hikari)가 같은 DB 에 따로 접속했다. 자동 설정을 껐다 |
-| DB 설정 누락 시 원인 불명 | 풀 생성 실패와 커넥션 실패 이유를 `[DB]` 로그로 남긴다 |
-| Xerox 결제 무한 대기 | 결과를 최대 120초 기다리고, 넘으면 `NO` 로 응답한다. 요청 전에 이전 결과를 초기화하고, 단말기 소켓을 닫는다 |
-| 카드번호 로그 노출 | 카드번호는 `Mask.card()` 로 가려서 출력하고, SQL 문과 요청 본문은 더 이상 출력하지 않는다 |
-| 커넥션·Statement 누수 | 모든 SQL 클래스가 try-with-resources 로 자원을 닫고 커넥션을 반납한다 |
-
-교세라 사이버머니 결제(`/stech/kyocera/postCyberMoneyPayment`)도 같은 방식으로 고쳐서 켜 두었다.
-
-프린터 상태 API(`/postPrinter`)는 /stech 버전에 없어서 뺐다. `Printer`, `PrinterResult`, `PrinterSQL` 클래스는 남아 있지만 쓰지 않는다.
-
-### 남은 문제
-
-1. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
-2. **Xerox 결제 단말기 지정**: 복사기 에이전트와 결제 단말기의 IP 가 다르면, 결제 요청에 `terminalID` 를 넣어 보내야 정확한 단말기로 간다. 넣지 않으면 마지막으로 접속한 단말기로 보낸다 (예전 동작).
+1. SQL 을 문자열로 이어 붙여 만든다 (SQL 인젝션 가능, 값에 `'` 가 있으면 오류)
+2. 사이버머니: 잔액을 읽고 계산해서 다시 쓰므로 같은 카드로 동시에 결제하면 한 번만 차감될 수 있다. 결제 후 잔액이 정확히 0원이면 결제가 거절된다 (no card)
+3. 카드 결제 중복 확인(`PaymentCK`)이 결제마다 1초씩 기다리고, 같은 승인번호 기록을 지울 수 있다
+4. 승인번호(R09)가 빈 카드 결제는 하루 첫 건만 기록된다
+5. 티머니·캐시비가 아닌 교통카드는 기록되지 않는다. R11 이 Y/N 이 아니고 R33 이 없으면 서버 오류(NullPointerException)
+6. 모르는 카드사 코드는 카드사명이 빈 값으로 기록된다
+7. 오류가 나도 rollback 하지 않고, 커넥션 풀이 가득 차면 무한 대기한다
+8. 카드번호·SQL 문이 콘솔에 그대로 출력된다
+9. 소켓 서버를 켜면: 한 번에 한 단말기씩 처리하고 읽기 제한 시간이 없다. 단말기 IP·결제 결과를 static 변수 하나로 같이 써서 단말기가 여러 대면 섞인다. Xerox 결제는 결과가 안 오면 무한 대기한다

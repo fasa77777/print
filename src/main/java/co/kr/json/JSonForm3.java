@@ -1,37 +1,32 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package co.kr.json;
 
+import co.kr.json.PServer;
+import com.jetwork.bin.JetworkServerApplication;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Map;
-
 import org.json.simple.JSONObject;
 
-import com.jetwork.bin.TerminalState;
-
-/**
- * 티머니 결제 승인(단말기 작업 코드 04, R32 가 FF 가 아님)을 중계 서버의 /printnuri/payment 로 보낸다.
- * 승인번호 대신 현재 시각(yyyyMMddHHmmss)을 쓴다.
- * 단말기 ID 와 금액은 전문의 S03·S10 을 먼저 쓰고, 없으면 그 단말기의 상태(02 전문·Xerox 결제 요청)에서 가져온다.
- */
 public class JSonForm3 {
-
-	public void setPaymentJson(TerminalState terminal, String[] sD) {
-		Map<String, String> f = JSonForm.toMap(sD);
-		String terminalID = f.containsKey("S03") && !f.get("S03").isEmpty() ? f.get("S03") : terminal.getTerminalID();
-		String price = f.containsKey("S10") && !f.get("S10").isEmpty() ? f.get("S10") : String.valueOf(terminal.getPrice());
-
-		JSONObject data = new JSONObject();
-		data.put("terminalID", terminalID);
-		data.put("price", price);
-		data.put("payOK", new SimpleDateFormat("yyyyMMddHHmmss", Locale.KOREA).format(new Date()));
-		data.put("craditName", "");
-		data.put("payType", "TM");
-		data.put("payTypeTM", "TM");
-		data.put("paperSize", "A4");
-		data.put("color", terminal.getColor());
-		data.put("count", terminal.getCount());
-
-		new PServer().putPost(data);
-	}
+    public void setPaymentJson() {
+        JSONObject data = new JSONObject();
+        data.put((Object)"terminalID", (Object)JetworkServerApplication.terID);
+        data.put((Object)"price", (Object)JetworkServerApplication.printPrice);
+        Date m_strTime = new Date();
+        SimpleDateFormat dFormat = new SimpleDateFormat("yyyyMMddHHmmss", Locale.KOREA);
+        String sTime = dFormat.format(m_strTime);
+        data.put((Object)"payOK", (Object)sTime);
+        data.put((Object)"craditName", (Object)"");
+        data.put((Object)"payType", (Object)"TM");
+        data.put((Object)"payTypeTM", (Object)"TM");
+        data.put((Object)"paperSize", (Object)"A4");
+        data.put((Object)"color", (Object)JetworkServerApplication.printColor);
+        data.put((Object)"count", (Object)JetworkServerApplication.printCount);
+        System.out.println("11111111111111111111");
+        PServer ps = new PServer();
+        ps.putPost(data);
+    }
 }
