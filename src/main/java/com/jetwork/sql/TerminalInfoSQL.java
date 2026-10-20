@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,6 +12,8 @@ import com.jetwork.model.Terminal;
 
 /** 단말기 등록 확인과 버전 정보 갱신 (/stech/postTerminal). */
 public class TerminalInfoSQL {
+
+	private static final Logger logger = LoggerFactory.getLogger(TerminalInfoSQL.class);
 
 	public enum Status {
 		/** jw_terminal 에 단말기 ID 와 시리얼이 함께 등록되어 있음 */
@@ -40,7 +45,7 @@ public class TerminalInfoSQL {
 			}
 
 			if (registered) {
-				System.out.println("사용중인 복사기 " + terminal.getTerminalID());
+				logger.debug("등록된 단말기 {}", terminal.getTerminalID());
 				try (PreparedStatement ps = conn.prepareStatement(
 						"UPDATE [dbo].[jw_terminal] SET [agent_version] = ?, [update] = getdate() "
 								+ " WHERE [terminal_id] = ?")) {
@@ -51,7 +56,7 @@ public class TerminalInfoSQL {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("TerminalInfoSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return Status.ERROR;
 		} finally {

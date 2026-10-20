@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,6 +17,8 @@ import com.jetwork.model.Printer;
  * 기존 코드 그대로이며, 두 테이블이 같은 것인지 확인이 필요하다. (docs/ARCHITECTURE.md 참고)
  */
 public class PrinterSQL {
+
+	private static final Logger logger = LoggerFactory.getLogger(PrinterSQL.class);
 
 	private static final String UPDATE_SQL = "UPDATE [dbo].[printer] SET "
 			+ " [devid] = ?, [sitename] = ?, [desc1] = ?, [errmsg] = ?, [modelname] = ?, "
@@ -68,12 +73,12 @@ public class PrinterSQL {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("PrinterSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);
 		}
-		System.out.println("printer registered == " + registered);
+		logger.debug("프린터 {} registered={}", printer.getSerialnumber(), registered);
 		return registered;
 	}
 }

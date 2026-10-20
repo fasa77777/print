@@ -13,7 +13,7 @@ import com.jetwork.model.PaymentKicc;
 /** 신용·체크카드, 티머니, 캐시비 결제 기록 (/stech/postCraditPayment). */
 public class CreaditPaymentSQL {
 
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(CreaditPaymentSQL.class);
 
 	/**
 	 * 결제 한 건을 jw_payment 에 기록한다.
@@ -65,7 +65,7 @@ public class CreaditPaymentSQL {
 		try {
 			conn.setAutoCommit(false);
 			if (CardPaymentLedger.existsToday(conn, paymentOk)) {
-				System.out.println("중복");
+				logger.info("오늘 같은 승인번호 결제가 이미 있어 기록하지 않음 terminalID={} R09={}", payment.getTerminalID(), paymentOk);
 				conn.commit();
 			} else {
 				CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
@@ -75,7 +75,7 @@ public class CreaditPaymentSQL {
 				CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("CreaditPaymentSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);
@@ -97,7 +97,7 @@ public class CreaditPaymentSQL {
 			conn.commit();
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("CreaditPaymentSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);

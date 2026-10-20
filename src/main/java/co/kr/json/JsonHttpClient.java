@@ -7,12 +7,16 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 결제 중계 서버(pay1.printnuri.com)로 JSON 을 POST 하는 공통 HTTP 클라이언트.
  * 예전에는 PServer, PrintCyberPOST, PrintPolicyPost 에 같은 코드가 복사되어 있었다.
  */
 public final class JsonHttpClient {
+
+	private static final Logger logger = LoggerFactory.getLogger(JsonHttpClient.class);
 
 	/**
 	 * 중계 서버 주소. 경로는 각 호출하는 쪽에서 붙인다.
@@ -33,7 +37,7 @@ public final class JsonHttpClient {
 	 * HTTP 200 이 아니면 응답 메시지를 출력하고 빈 문자열을 돌려준다.
 	 */
 	public static String post(String url, JSONObject body) throws Exception {
-		System.out.println("POST " + url);
+		logger.debug("POST {}", url);
 
 		HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
 		con.setDoOutput(true);
@@ -51,7 +55,7 @@ public final class JsonHttpClient {
 
 		int status = con.getResponseCode();
 		if (status != HttpURLConnection.HTTP_OK) {
-			System.out.println(con.getResponseMessage());
+			logger.warn("중계 서버 응답 {} {} : {}", status, con.getResponseMessage(), url);
 			return "";
 		}
 
@@ -62,7 +66,7 @@ public final class JsonHttpClient {
 				sb.append(line).append("\n");
 			}
 		}
-		System.out.println("[" + sb + "]");
+		logger.debug("중계 서버 응답 {}", sb);
 		return sb.toString();
 	}
 }

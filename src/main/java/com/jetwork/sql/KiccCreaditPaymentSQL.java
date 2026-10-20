@@ -12,7 +12,7 @@ import com.jetwork.model.PaymentCreaditKicc;
 /** KICC 단말기 결제 기록 (/stech/kicc/postCraditPayment). */
 public class KiccCreaditPaymentSQL {
 
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(KiccCreaditPaymentSQL.class);
 
 	/**
 	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 last_dt 를 갱신한다.
@@ -46,7 +46,7 @@ public class KiccCreaditPaymentSQL {
 			conn.commit();
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("KiccCreaditPaymentSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);

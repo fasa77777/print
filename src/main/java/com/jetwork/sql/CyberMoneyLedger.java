@@ -1,5 +1,8 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,6 +13,8 @@ import java.sql.SQLException;
  * 호출하는 쪽이 커넥션과 트랜잭션(commit / rollback)을 관리한다.
  */
 final class CyberMoneyLedger {
+
+	private static final Logger logger = LoggerFactory.getLogger(CyberMoneyLedger.class);
 
 	private CyberMoneyLedger() {
 	}
@@ -151,7 +156,7 @@ final class CyberMoneyLedger {
 		try {
 			conn.rollback();
 		} catch (SQLException e) {
-			e.printStackTrace();
+			logger.error("CyberMoneyLedger 처리 중 오류", e);
 		}
 	}
 }

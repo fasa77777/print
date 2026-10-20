@@ -32,7 +32,7 @@ public class JSonForm {
 	}
 
 	/** "키=값" 목록을 맵으로 바꾼다. 키는 '=' 앞 3글자(S03, R04 등), 값은 앞뒤 공백을 뗀다. */
-	static Map<String, String> toMap(String[] sD) {
+	public static Map<String, String> toMap(String[] sD) {
 		Map<String, String> map = new HashMap<String, String>();
 		for (String field : sD) {
 			int eq = field.indexOf('=');

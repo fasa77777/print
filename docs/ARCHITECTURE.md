@@ -62,14 +62,17 @@
 | `/stech/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKyocera` | `PaymentResult` | `CyberMoneyKyoceraPaymentSQL` |
 | `/stech/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
 | `/stech/printnuri/payment` | 프린트누리 결제 기록 | `PrintNuriPay` | `PriceSendResult` | `PrintNuriCreaditPaymentSQL` |
-| `/stech/xerox/xeroxPayment` | Xerox 출력 결제: 단말기에 결제를 요청하고 결과가 올 때까지 대기 | `XeroxPay` | `PriceXeroxSendResult` | (소켓 통신) |
+| `/stech/xerox/xeroxPayment` | Xerox 출력 결제: 단말기에 결제를 요청하고 결과가 올 때까지 대기 (본문에 `terminalID` 를 넣으면 그 단말기로 보냄) | `XeroxPay` | `PriceXeroxSendResult` | (소켓 통신) |
 
 ### Xerox 결제 흐름 (`/xerox/xeroxPayment`)
 
-1. 요청의 금액·컬러·매수를 `JetworkServerApplication` 의 static 변수에 저장
-2. 마지막으로 접속한 단말기 IP(`TerminalIP`)의 10000번 포트로 결제 요청 전문(`ReqCharge`) 전송
-3. 단말기가 결제를 마치고 10020번 소켓 서버로 결과를 보내면 `SocketServerDriver` 가 `chk`(승인 여부), `chk1`(결과 도착)을 바꿈
-4. API 는 1초마다 `chk1` 을 확인하다가 `true` 가 되면 `chk` 값으로 `OK` / `NO` 응답
+단말기별 상태(IP, 단말기 ID, 진행 중인 결제 금액·컬러·매수, 결제 결과)는 `TerminalRegistry` 에 단말기(소켓 접속 IP)마다 따로 있습니다.
+
+1. 결제할 단말기를 정한다: 요청 본문의 `terminalID`(선택) → 요청을 보낸 IP 의 단말기 → 둘 다 모르면 마지막으로 접속한 단말기(경고 로그)
+2. 그 단말기의 이전 결과를 지우고 금액·컬러·매수를 저장 (`TerminalState.startPayment`)
+3. 그 단말기 IP 의 10000번 포트로 결제 요청 전문(`ReqCharge`) 전송
+4. 단말기가 10020번 소켓 서버로 결과를 보내면 `SocketServerDriver` 가 **그 단말기의** 결과로 기록
+5. API 는 그 단말기의 결과를 최대 120초 기다렸다가 `OK` / `NO` 응답
 
 ## 5. 결제 단말기 소켓 전문 (`SocketServerDriver`, 포트 10020)
 
@@ -139,6 +142,10 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 커넥션 풀 최대값 20000 | 기본 100 으로 줄이고 `db.properties` 에서 바꿀 수 있게 했다 (단말기 4000대 기준) |
 | 중복 확인 중 커넥션 점유 | `PaymentCK` 가 1초 기다리는 동안 커넥션을 붙잡고 있었다. 반납한 뒤 기다리도록 바꿨다 |
 | 소켓 서버가 단말기를 하나씩 처리 | 접속 하나를 중계 서버 HTTP 요청까지 끝내야 다음 단말기를 받았다. 이제 작업 스레드 50개가 동시에 처리하고, 밀리면 1000개까지 줄을 세운다 |
+| 단말기 정보가 서버 전체에 하나 | 단말기 IP·ID·진행 중인 결제·결과를 static 변수 하나로 같이 써서, 단말기가 여러 대면 Xerox 결제 요청이 다른 단말기로 가거나 티머니·사이버머니가 다른 단말기 ID·금액으로 기록됐다. 단말기(IP)별 `TerminalState` 로 나눴다 |
+| 가격 정책 요청이 서버 시작 후 한 번만 | 단말기마다 처음 한 번(성공할 때까지) 요청한다 |
+| 티머니 이중 기록 | R32 가 있는 전문은 티머니로만 처리하고 R04 를 보지 않아, 카드 결제로 한 번 더 기록되지 않는다 |
+| 로그 | `System.out` 과 `printStackTrace` 를 SLF4J `logger` 로 통일하고, 한 요청에 한 줄로 정리했다. 원본 전문·중계 서버 응답은 debug 레벨 |
 | 스레드 간 공유 상태가 안 보이던 문제 | 소켓 스레드가 바꾼 결제 결과(`chk`, `chk1`)를 HTTP 스레드가 못 볼 수 있었다. 공유 변수를 `volatile` 로 바꿨다 |
 | 카드사명 없는 결제 | 신용·체크카드 결제에서 발급사 코드가 없거나 목록에 없으면 카드사명을 빈 값 대신 `해외카드` 로 기록한다 (`CardCompanyName.getCardName`). 티머니·캐시비는 그대로 둔다 |
 | 결제번호 중복 차감 | 사이버머니 결제(`/postCyberMoneyPayment`)도 같은 카드·결제번호(`cyberNo`)로 이미 처리된 결제면 차감하지 않고 FAIL(`duplicate`) 로 응답한다 |
@@ -164,9 +171,6 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 ### 남은 문제 (확인이 필요해서 고치지 않음)
 
 1. **주소 불일치**: 컨트롤러 주소는 `/stech/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
-2. **단말기 정보가 서버 전체에 하나 (static 변수)**: `TerminalIP`, `terID`, `printPrice`, `chk`/`chk1` 이 단말기 구분 없이 하나뿐이다. 단말기가 여러 대면 Xerox 결제 요청이 마지막에 접속한 단말기로 가고, 티머니(`JSonForm3`)·사이버머니(`JSonForm2`) 결제는 다른 단말기 ID·금액으로 기록될 수 있다. Xerox 결제 요청(`XeroxPay`)에 단말기 ID 가 없어서 요청 형식부터 바꿔야 한다.
-3. **가격 정책 요청이 서버 시작 후 한 번만**: `chk2` 가 서버 전체에 하나라서, 처음 한 단말기만 중계 서버에 가격 정책을 요청한다.
-4. **티머니 이중 기록 가능성**: 티머니 결과에 R32 와 함께 R04=0000 도 오면 `JSonForm3`(티머니)과 `JSonForm`(카드)이 둘 다 보내져 결제가 두 번 기록될 수 있다. 실제 티머니 전문으로 확인이 필요하다.
-5. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
-6. `System.out.println` 과 `logger` 가 섞여 있다.
-7. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+2. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
+3. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+4. **Xerox 결제 단말기 지정**: 복사기 에이전트와 결제 단말기의 IP 가 다르면, 결제 요청에 `terminalID` 를 넣어 보내야 정확한 단말기로 간다. 넣지 않으면 마지막으로 접속한 단말기로 보낸다 (예전 동작).
