@@ -16,10 +16,14 @@ import com.jetwork.bin.TerminalState;
  */
 public class JSonForm3 {
 
-	public void setPaymentJson(TerminalState terminal, String[] sD) {
+	/**
+	 * @param job 결과를 받기 직전에 꺼내 둔 진행 중인 작업 (없으면 null).
+	 *            결과를 알리면 Xerox 결제 API 가 작업을 지우므로, 그 전에 꺼낸 값을 쓴다.
+	 */
+	public void setPaymentJson(TerminalState terminal, TerminalState.Job job, String[] sD) {
 		Map<String, String> f = JSonForm.toMap(sD);
 		String terminalID = f.containsKey("S03") && !f.get("S03").isEmpty() ? f.get("S03") : terminal.getTerminalID();
-		String price = f.containsKey("S10") && !f.get("S10").isEmpty() ? f.get("S10") : String.valueOf(terminal.getPrice());
+		String price = f.containsKey("S10") && !f.get("S10").isEmpty() ? f.get("S10") : String.valueOf(job == null ? 0 : job.getPrice());
 
 		JSONObject data = new JSONObject();
 		data.put("terminalID", terminalID);
@@ -29,8 +33,8 @@ public class JSonForm3 {
 		data.put("payType", "TM");
 		data.put("payTypeTM", "TM");
 		data.put("paperSize", "A4");
-		data.put("color", terminal.getColor());
-		data.put("count", terminal.getCount());
+		data.put("color", job == null ? "" : job.getColor());
+		data.put("count", job == null ? "" : job.getCount());
 
 		new PServer().putPost(data);
 	}

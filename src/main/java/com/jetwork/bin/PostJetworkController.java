@@ -289,7 +289,7 @@ public class PostJetworkController {
    	logger.info("Xerox 결제 요청 {} ({}로 찾음) 금액={} 작업={}", terminal, how, amount, xeroxPay.getJobType());
 
    	// 2. 이 단말기의 이전 결제 결과를 지우고 새 결제를 시작한다
-   	terminal.startPayment(amount, xeroxPay.getColor(), xeroxPay.getTotalPages());
+   	TerminalState.Job job = terminal.startPayment(amount, xeroxPay.getColor(), xeroxPay.getTotalPages());
 
    	// 3. 결제 단말기(10000번 포트)에 결제 요청 전문을 보낸다
    	//    단말기가 꺼져 있거나 응답이 없으면 (예전에는 500 오류, 접속 대기도 OS 기본값 20초 이상) 5초 만에 NO
@@ -305,6 +305,7 @@ public class PostJetworkController {
    		logger.debug("단말기 응답 {} bytes", read);
    	} catch (IOException e) {
    		logger.warn("결제 단말기에 결제 요청을 보내지 못함 {} : {}", terminal, e.toString());
+   		terminal.finishPayment(job);
    		ps.setResult("NO");
    		return ps;
    	}
@@ -316,6 +317,9 @@ public class PostJetworkController {
    	} catch (InterruptedException e) {
    		Thread.currentThread().interrupt();
    		approved = null;
+   	} finally {
+   		// 결제가 끝났으므로 진행 중인 작업을 지운다. (이후 카드를 태그해도 이전 금액으로 결제되지 않게)
+   		terminal.finishPayment(job);
    	}
 
    	if (approved == null) {

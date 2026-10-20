@@ -207,19 +207,20 @@ public class SocketServerDriver implements Runnable {
 			new JSonForm2().setPaymentJson(terminal, stBuffer.toString());
 
 		} else if ("04".equals(ck)) {
-			handlePaymentResult(terminal, new String(rcvData, "UTF-8"));
+			handlePaymentResult(terminal, rcvData);
 		}
 	}
 
 	/**
 	 * 04: 카드·티머니 결제 결과. 본문은 "S03=...;S10=...;R04=...;" 처럼 ';' 로 나뉜 "키=값" 목록이다.
 	 *  - CANCEL 이 들어 있으면 취소
-	 *  - R32 값이 있으면 티머니 결과다. 첫 글자가 FF 면 거절, 아니면 승인 (JSonForm3).
+	 *  - R32 값이 있으면 티머니 결과다. 값의 첫 바이트가 0xFF 면 거절, 아니면 승인 (JSonForm3).
 	 *    티머니 결과에서는 R04 를 보지 않는다 (카드 결제로 한 번 더 기록되지 않게)
 	 *  - 티머니가 아니면 R04=0000 이 카드 승인 (JSonForm), 그 밖의 값은 거절
 	 * 승인·거절이 정해지면 그 단말기의 결제 결과로 기록해서, 기다리던 Xerox 결제 API 를 깨운다.
 	 */
-	private void handlePaymentResult(TerminalState terminal, String message) {
+	private void handlePaymentResult(TerminalState terminal, byte[] raw) throws java.io.UnsupportedEncodingException {
+		String message = new String(raw, "UTF-8");
 		String[] sD = message.split(";");
 		java.util.Map<String, String> f = co.kr.json.JSonForm.toMap(sD);
 
@@ -231,13 +232,16 @@ public class SocketServerDriver implements Runnable {
 
 		String r32 = f.get("R32");
 		if (r32 != null && !r32.isEmpty()) {
-			if (String.format("%02X", (int) r32.charAt(0)).startsWith("FF")) {
+			// 결과를 알리면 Xerox 결제 API 가 진행 중인 작업을 지우므로, 티머니 기록에 쓸 작업 정보를 먼저 꺼내 둔다.
+			TerminalState.Job job = terminal.currentJob();
+			logger.info("티머니 결과 {} R32 첫 바이트=0x{}", terminal, String.format("%02X", r32FirstByte(raw) & 0xff));
+			if (isTmoneyRejected(raw, r32)) {
 				terminal.setResult(false);
 				logger.info("티머니 승인 거절 {}", terminal);
 			} else {
 				terminal.setResult(true);
 				logger.info("티머니 승인 {} 금액={}", terminal, f.get("S10"));
-				new JSonForm3().setPaymentJson(terminal, sD);
+				new JSonForm3().setPaymentJson(terminal, job, sD);
 			}
 			return;
 		}
@@ -255,6 +259,30 @@ public class SocketServerDriver implements Runnable {
 			terminal.setResult(false);
 			logger.info("카드 승인 거절 {} R04={}", terminal, code);
 		}
+	}
+
+	/**
+	 * 티머니 거절인지. R32 값의 첫 바이트가 0xFF 면 거절이다 (원래 코드의 의도).
+	 * 예전에는 전문 전체를 글자로 바꾼 뒤 첫 글자를 봐서, 0xFF 가 아닌 다른 비 ASCII 바이트(0x80~0xFE)도
+	 * 깨진 글자(U+FFFD)가 되어 거절로 잘못 판단될 수 있었다. 이제 원본 바이트를 직접 본다.
+	 */
+	static boolean isTmoneyRejected(byte[] raw, String r32Text) {
+		int first = r32FirstByte(raw);
+		if (first >= 0) {
+			return first == 0xFF;
+		}
+		// 원본 바이트를 못 찾은 경우만 예전 방식으로 판단
+		return !r32Text.isEmpty() && (r32Text.charAt(0) == '\uFFFD' || r32Text.charAt(0) == '\u00FF');
+	}
+
+	/** 원본 전문에서 "R32=" 바로 뒤 바이트 (0~255). 없으면 -1 */
+	static int r32FirstByte(byte[] raw) {
+		for (int i = 0; i + 4 < raw.length; i++) {
+			if (raw[i] == 'R' && raw[i + 1] == '3' && raw[i + 2] == '2' && raw[i + 3] == '=') {
+				return raw[i + 4] & 0xff;
+			}
+		}
+		return -1;
 	}
 
 	/** 문자열의 각 글자를 "%02X " 형식의 16진수로 바꾼다. 예) "AB" -> "41 42 " */
