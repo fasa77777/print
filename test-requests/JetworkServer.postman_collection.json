@@ -1,0 +1,430 @@
+{
+  "info": {
+    "name": "JetworkServer 테스트 결제 요청 (/stech)",
+    "description": "결제 서버 API 테스트용 요청 모음.\n\n변수(컬렉션 → Variables)\n- baseUrl: 서버 주소 (기본 http://localhost:8090/stech)\n- terminalID / serial: jw_terminal 에 등록된 **테스트용** 단말기\n- userCard: 테스트용 사이버머니 카드번호\n\n⚠️ 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다. 운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.\n\ncyberNo·승인번호(R09)는 {{$timestamp}} 로 매번 바뀌어서 중복으로 걸러지지 않습니다.\n\nXerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았습니다.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. 단말기",
+      "item": [
+        {
+          "name": "단말기 등록 확인",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postTerminal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postTerminal"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"serial\": \"{{serial}}\",\n  \"key\": \"\",\n  \"license\": \"\",\n  \"agentVersion\": \"Xerox_2.11.01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "jw_terminal 에 terminalID 와 serial 이 함께 있으면 result=OK, 없으면 FALSE, DB 오류면 ERROR."
+          },
+          "response": []
+        },
+        {
+          "name": "가격 정책 조회",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/printnuri/pricepolicy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "printnuri",
+                "pricepolicy"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"agentVersion\": \"Xerox_2.11.01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "jw_paper 의 A4 흑백(A4mono)·컬러(A4color) 장당 가격을 돌려준다."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. 사이버머니",
+      "item": [
+        {
+          "name": "잔액 조회",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCyberMoney",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCyberMoney"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userID\": \"{{terminalID}}\",\n  \"userCard\": \"{{userCard}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "처음 보는 카드는 0원으로 등록되고 money=0. ⚠️ cybermoney 테이블에 카드가 새로 생긴다."
+          },
+          "response": []
+        },
+        {
+          "name": "사이버머니 결제",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCyberMoneyPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCyberMoneyPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"userCard\": \"{{userCard}}\",\n  \"cyberNo\": \"{{$timestamp}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R09\": \"{{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "잔액이 100원 이상이면 차감 후 OK. 잔액 부족 FAIL(no money), 미등록 카드 FAIL(no card), 같은 cyberNo 재요청 FAIL(duplicate). ⚠️ 실제 잔액이 차감된다."
+          },
+          "response": []
+        },
+        {
+          "name": "교세라 사이버머니 결제",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kyocera/postCyberMoneyPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kyocera",
+                "postCyberMoneyPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"userCard\": \"{{userCard}}\",\n  \"cyberNo\": \"{{$timestamp}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"2\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "color 1=컬러, 2=흑백. 동작은 사이버머니 결제와 같다. ⚠️ 실제 잔액이 차감된다."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. 카드·교통카드 결제 기록",
+      "item": [
+        {
+          "name": "신용카드 (신한)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R09\": \"{{$timestamp}}\",\n  \"R11\": \"N\",\n  \"R12\": \"029\",\n  \"R33\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "jw_payment 에 신용카드 / 신한 카드사로 기록. 같은 날 같은 승인번호(R09)는 한 번만 기록된다. 응답은 항상 OK."
+          },
+          "response": []
+        },
+        {
+          "name": "체크카드 (카드사 코드 없음 → 해외카드)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R09\": \"{{$timestamp}}\",\n  \"R11\": \"Y\",\n  \"R12\": \"\",\n  \"R33\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "카드사명을 모르면 '해외카드' 로 기록."
+          },
+          "response": []
+        },
+        {
+          "name": "티머니",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R11\": \"\",\n  \"R33\": \"TM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "결제 종류·카드사명 모두 티머니."
+          },
+          "response": []
+        },
+        {
+          "name": "캐시비",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R11\": \"\",\n  \"R33\": \"EB\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "결제 종류·카드사명 모두 캐시비."
+          },
+          "response": []
+        },
+        {
+          "name": "기타 교통카드",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R11\": \"\",\n  \"R33\": \"RP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "TM·EB 가 아니면 '교통카드' 로 기록."
+          },
+          "response": []
+        },
+        {
+          "name": "KICC 단말기 카드 결제",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kicc/postCraditPayment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kicc",
+                "postCraditPayment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"totalAmount\": \"100\",\n  \"paperSize\": \"A4\",\n  \"color\": \"false\",\n  \"jobType\": \"print\",\n  \"totalPages\": \"1\",\n  \"R09\": \"{{$timestamp}}\",\n  \"R10\": \"N\",\n  \"R12\": \"016\",\n  \"R33\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "R10 Y=체크, 그 외=신용. 016=국민 카드사."
+          },
+          "response": []
+        },
+        {
+          "name": "프린트누리 결제",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/printnuri/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "printnuri",
+                "payment"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terminalID\": \"{{terminalID}}\",\n  \"price\": \"100\",\n  \"payOK\": \"{{$timestamp}}\",\n  \"craditName\": \"031\",\n  \"payType\": \"N\",\n  \"payTypeTM\": \"\",\n  \"color\": \"false\",\n  \"count\": \"1\",\n  \"paperSize\": \"A4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "payType Y=체크, 그 외=신용. 031=삼성 카드사."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090/stech"
+    },
+    {
+      "key": "terminalID",
+      "value": "TEST0001"
+    },
+    {
+      "key": "serial",
+      "value": "TESTSERIAL0001"
+    },
+    {
+      "key": "userCard",
+      "value": "TESTCARD"
+    }
+  ]
+}
