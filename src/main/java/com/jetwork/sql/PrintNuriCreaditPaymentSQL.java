@@ -7,6 +7,7 @@ import java.sql.Connection;
 
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.CardCompanyName;
+import com.jetwork.model.RecordStatus;
 import com.jetwork.model.PrintNuriPay;
 
 /** 프린트누리 결제 기록 (/stech/printnuri/payment). */
@@ -16,9 +17,9 @@ public class PrintNuriCreaditPaymentSQL {
 
 	/**
 	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 last_dt 를 갱신한다.
-	 * payType 이 Y 면 체크카드, 아니면 신용카드. payTypeTM 이 TM/EB 면 티머니/캐시비. 반환값은 쓰지 않는다.
+	 * payType 이 Y 면 체크카드, 아니면 신용카드. payTypeTM 이 TM/EB 면 티머니/캐시비. jw_terminal 에 없는 단말기면 기록하지 않고 NO_TERMINAL.
 	 */
-	public String setPayment(PrintNuriPay payment) {
+	public RecordStatus setPayment(PrintNuriPay payment) {
 		String payType = "Y".equals(payment.getPayType()) ? "체크카드" : "신용카드";
 		if ("TM".equals(payment.getPayTypeTM())) {
 			payType = "티머니";
@@ -34,21 +35,27 @@ public class PrintNuriCreaditPaymentSQL {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
-			return "";
+			return RecordStatus.ERROR;
 		}
 		try {
+			// 등록되지 않은 단말기의 결제는 기록하지 않고 FAIL 로 응답한다.
+			if (!CardPaymentLedger.terminalExists(conn, payment.getTerminalID())) {
+				logger.warn("미등록 단말기의 결제 거절 terminalID={} amount={}", payment.getTerminalID(), payment.getPrice());
+				return RecordStatus.NO_TERMINAL;
+			}
 			conn.setAutoCommit(false);
 			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getPrice(), payType,
 					payment.getPaperSize(), payment.getColor(), payment.getPayOK(), "print",
 					cardName, payment.getCount());
 			conn.commit();
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
+			return RecordStatus.OK;
 		} catch (Exception e) {
 			logger.error("PrintNuriCreaditPaymentSQL 처리 중 오류", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
+			return RecordStatus.ERROR;
 		} finally {
 			dbcp.freeConnection(conn);
 		}
-		return "";
 	}
 }

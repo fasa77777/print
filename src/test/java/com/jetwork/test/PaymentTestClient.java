@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
  * 주의
  *   - 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감된다. 테스트용 단말기·카드로만 실행한다.
  *   - 단말기 확인이 OK 가 되려면 terminalID 와 serial 이 jw_terminal 에 등록되어 있어야 한다.
+ *   - 결제 API 는 terminalID 가 jw_terminal 에 없으면 FAIL(no terminal) 로 거절한다. 4번에서 이것도 확인한다.
  *   - Xerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았다.
  *   - 소켓 테스트는 02(가격 정책) 전문만 보낸다. 04·06 전문은 중계 서버에 실제 결제를 기록하므로 보내지 않는다.
  */
@@ -117,7 +118,7 @@ public class PaymentTestClient {
 				"paperSize", "A4", "color", "2", "jobType", "print", "totalPages", "1"));
 		expectIn(r, "result", "OK", "FAIL");
 
-		// 3. 카드·교통카드 결제 기록 (응답은 항상 OK, 기록 내용은 jw_payment 에서 확인)
+		// 3. 카드·교통카드 결제 기록 (등록된 단말기면 OK, 기록 내용은 jw_payment 에서 확인)
 		section("3. 카드·교통카드 결제 기록");
 		expect(post("신용카드 (신한 029)", "/postCraditPayment", card("R09", newNo(), "R11", "N", "R12", "029", "R33", "")), "result", "OK");
 		expect(post("체크카드 (카드사 코드 없음 → 해외카드)", "/postCraditPayment", card("R09", newNo(), "R11", "Y", "R12", "", "R33", "")), "result", "OK");
@@ -129,9 +130,22 @@ public class PaymentTestClient {
 				"terminalID", terminalID, "price", "100", "payOK", newNo(), "craditName", "031", "payType", "N",
 				"payTypeTM", "", "color", "false", "count", "1", "paperSize", "A4")), "result", "OK");
 
-		// 4. 단말기 소켓 (선택)
+		// 4. 미등록 단말기 결제 → 모두 FAIL(no terminal) 이어야 함
+		section("4. 미등록 단말기 결제 거절");
+		String saved = terminalID;
+		terminalID = "NO_SUCH_TERMINAL_" + newNo().substring(8);
+		expect(post("미등록 단말기 신용카드", "/postCraditPayment", card("R09", newNo(), "R11", "N", "R12", "029", "R33", "")), "reason", "no terminal");
+		expect(post("미등록 단말기 KICC", "/kicc/postCraditPayment", card("R09", newNo(), "R10", "N", "R12", "016", "R33", "")), "reason", "no terminal");
+		expect(post("미등록 단말기 프린트누리", "/printnuri/payment", json(
+				"terminalID", terminalID, "price", "100", "payOK", newNo(), "craditName", "031", "payType", "N",
+				"payTypeTM", "", "color", "false", "count", "1", "paperSize", "A4")), "result", "FAIL");
+		expect(post("미등록 단말기 사이버머니", "/postCyberMoneyPayment", json("terminalID", terminalID, "userCard", userCard,
+				"cyberNo", newNo(), "totalAmount", "100", "paperSize", "A4", "color", "false", "jobType", "print", "totalPages", "1")), "reason", "no terminal");
+		terminalID = saved;
+
+		// 5. 단말기 소켓 (선택)
 		if (socketTest) {
-			section("4. 단말기 소켓 " + socketHost + ":" + socketPort);
+			section("5. 단말기 소켓 " + socketHost + ":" + socketPort);
 			socketPolicy();
 		}
 
@@ -244,6 +258,8 @@ public class PaymentTestClient {
 		String v = r.get(key);
 		if (expected.equals(v)) {
 			ok(key + "=" + v);
+		} else if ("no terminal".equals(r.get("reason")) || ("FAIL".equals(r.get("result")) && r.get("reason") == null && "OK".equals(expected))) {
+			bad(key + " 기대값 " + expected + ", 실제 " + v + " → 단말기 ID '" + terminalID + "' 가 jw_terminal 에 없어서 결제가 거절됨");
 		} else {
 			bad(key + " 기대값 " + expected + ", 실제 " + v + (r.containsKey("_error") ? " (" + r.get("_error") + ")" : " (HTTP " + r.get("_status") + ")"));
 		}

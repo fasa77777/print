@@ -19,7 +19,7 @@ public class CyberMoneyPaymentSQL {
 
 	/**
 	 * 사이버머니로 결제한다.
-	 * 1. 금액이 숫자가 아니면 ERROR
+	 * 1. 금액이 숫자가 아니면 ERROR, 등록되지 않은 단말기면 NO_TERMINAL
 	 * 2. 같은 결제번호(cyberNo)로 이미 처리됐으면 DUPLICATE (차감하지 않음)
 	 * 3. 처음 보는 카드면 0원으로 등록하고 NO_CARD
 	 * 4. 잔액이 금액보다 적으면 INSUFFICIENT (차감하지 않음)
@@ -40,6 +40,14 @@ public class CyberMoneyPaymentSQL {
 		}
 		try {
 			conn.setAutoCommit(false);
+
+			// 등록되지 않은 단말기의 결제는 차감·기록하지 않고 FAIL 로 응답한다. (카드도 새로 등록하지 않는다)
+			if (!CardPaymentLedger.terminalExists(conn, payment.getTerminalID())) {
+				conn.commit();
+				logger.warn("미등록 단말기의 사이버머니 결제 거절 terminalID={} card={} amount={}",
+						payment.getTerminalID(), Mask.card(card), amount);
+				return new CyberMoneyResult(Status.NO_TERMINAL, 0);
+			}
 
 			Integer balance = CyberMoneyLedger.findBalance(conn, card);
 

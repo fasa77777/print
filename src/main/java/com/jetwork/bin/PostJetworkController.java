@@ -30,6 +30,7 @@ import com.jetwork.model.PriceResult;
 import com.jetwork.model.PriceSendResult;
 import com.jetwork.model.PriceXeroxSendResult;
 import com.jetwork.model.PrintNuriPay;
+import com.jetwork.model.RecordStatus;
 import com.jetwork.model.Terminal;
 import com.jetwork.model.XeroxPay;
 import com.jetwork.sql.CreaditPaymentSQL;
@@ -140,7 +141,7 @@ public class PostJetworkController {
    /**
     * 카드·교통카드 결제 기록.
     * R11 이 Y/N 이면 체크/신용카드, 아니면 R33 으로 티머니(TM)·캐시비(EB)·기타 교통카드를 구분해 jw_payment 에 기록한다.
-    * 결제 자체는 단말기에서 이미 끝났으므로 응답은 항상 OK 다.
+    * jw_terminal 에 없는 단말기 ID 면 기록하지 않고 FAIL(no terminal) 로 응답한다. 그 밖에는 OK.
     */
    @RequestMapping(method = RequestMethod.POST, path = "/postCraditPayment" ,consumes = "application/json")
     public PaymentResult postRequest3(@RequestBody PaymentKicc payment){
@@ -148,16 +149,9 @@ public class PostJetworkController {
     	logger.info("카드 결제 기록 terminalID={} amount={} R09={} R11={} R33={}",
     			payment.getTerminalID(), payment.getTotalAmount(), payment.getR09(), payment.getR11(), payment.getR33());
     	
-    	//신용카드,체크카드,티머니,캐시비 과금 처리
-    	//현석이 테스트용 주석처리
-//    	
-    	CreaditPaymentSQL cps = new CreaditPaymentSQL();
-    	cps.setPayment(payment);
-    	//
-    	PaymentResult pr = new PaymentResult();
-    	pr.setTerminalID(payment.getTerminalID());
-    	pr.setResult("OK");
-        return pr;
+    	RecordStatus status = new CreaditPaymentSQL().setPayment(payment);
+    	logger.info("카드 결제 기록 결과 terminalID={} {}", payment.getTerminalID(), status);
+        return status.toPaymentResult(payment.getTerminalID());
     }
    
 
@@ -177,23 +171,16 @@ public class PostJetworkController {
    
    
    /**
-    * KICC 단말기 카드 결제 기록. 응답은 항상 OK 다.
+    * KICC 단말기 카드 결제 기록. jw_terminal 에 없는 단말기 ID 면 기록하지 않고 FAIL(no terminal), 그 밖에는 OK.
     */
    @RequestMapping(method = RequestMethod.POST, path = "/kicc/postCraditPayment" ,consumes = "application/json")
    public PaymentResult postRequest5(@RequestBody PaymentCreaditKicc payment){
 
 
    	logger.info("KICC 카드 결제 기록 terminalID={} amount={} R09={}", payment.getTerminalID(), payment.getTotalAmount(), payment.getR09());
-    //현석이 테스트용 주석처리
-   	//신용카드,체크카드,티머니,캐시비 과금 처리
-   	KiccCreaditPaymentSQL cps = new KiccCreaditPaymentSQL();
-   	cps.setPayment(payment);
-   	//
-   	PaymentResult pr = new PaymentResult();
-   	pr.setTerminalID(payment.getTerminalID());
-   	pr.setResult("OK");
-
-       return pr;
+   	RecordStatus status = new KiccCreaditPaymentSQL().setPayment(payment);
+   	logger.info("KICC 카드 결제 기록 결과 terminalID={} {}", payment.getTerminalID(), status);
+       return status.toPaymentResult(payment.getTerminalID());
    }
    
    /**
@@ -228,6 +215,7 @@ public class PostJetworkController {
    /**
     * 프린트누리 결제 기록. 실제 주소는 /stech/printnuri/payment 이다.
     * 소켓 서버가 단말기 결제 결과를 중계 서버로 보낼 때 이 형식을 쓴다.
+    * jw_terminal 에 없는 단말기 ID 면 기록하지 않고 result=FAIL.
     */
    @RequestMapping(method = RequestMethod.POST, path = "/printnuri/payment" ,consumes = "application/json")
    public PriceSendResult postRequest7(@RequestBody PrintNuriPay printNuriPay){
@@ -235,14 +223,9 @@ public class PostJetworkController {
 
    	logger.info("프린트누리 결제 기록 terminalID={} price={} payOK={}", printNuriPay.getTerminalID(), printNuriPay.getPrice(), printNuriPay.getPayOK());
    	
-   	//프린터 가격정보
-   	PrintNuriCreaditPaymentSQL cps = new PrintNuriCreaditPaymentSQL();
-   	cps.setPayment(printNuriPay);
-   	//
-   	
-   	PriceSendResult ps = new PriceSendResult();
-   	ps.setResult("OK");
-    return ps;
+   	RecordStatus status = new PrintNuriCreaditPaymentSQL().setPayment(printNuriPay);
+   	logger.info("프린트누리 결제 기록 결과 terminalID={} {}", printNuriPay.getTerminalID(), status);
+    return status.toPriceSendResult();
    }
    
    /** Xerox 결제에서 단말기 결제 결과를 기다리는 최대 시간(초). 넘으면 결제 실패(NO)로 응답한다. */

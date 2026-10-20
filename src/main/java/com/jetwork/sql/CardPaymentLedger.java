@@ -74,6 +74,37 @@ final class CardPaymentLedger {
 		}
 	}
 
+	/** jw_terminal 에 이 단말기 ID 가 있는지 */
+	static boolean terminalExists(Connection conn, String terminalID) throws SQLException {
+		String id = trim(terminalID);
+		if (id.isEmpty()) {
+			return false;
+		}
+		try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM [dbo].[jw_terminal] WHERE [terminal_id] = ?")) {
+			ps.setString(1, id);
+			try (ResultSet rs = ps.executeQuery()) {
+				return rs.next();
+			}
+		}
+	}
+
+	/** 단말기가 등록되어 있는지 따로 확인한다 (커넥션을 빌려 쓰고 바로 반납). DB 오류면 null. */
+	static Boolean terminalExists(String terminalID) {
+		DBCPConnectionMgr dbcp = com.jetwork.bin.ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return null;
+		}
+		try {
+			return terminalExists(conn, terminalID);
+		} catch (SQLException e) {
+			logger.error("단말기 확인 중 DB 오류 terminalID=" + terminalID, e);
+			return null;
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+	}
+
 	static String trim(String s) {
 		return s == null ? "" : s.trim();
 	}

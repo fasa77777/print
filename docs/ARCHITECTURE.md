@@ -57,7 +57,7 @@
 | `/stech/postTerminal` | 단말기 등록 확인, 에이전트 버전 갱신 | `Terminal` | `PayRresult` | `TerminalInfoSQL` |
 | `/stech/postCyberMoney` | 사이버머니 잔액 조회 (카드가 없으면 0원으로 새로 등록) | `CyberMoney` | `CyberMoney` | `UserCyberMoneySQL` |
 | `/stech/postCyberMoneyPayment` | 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKicc` | `PaymentResult` | `CyberMoneyPaymentSQL` |
-| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL` |
+| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 (미등록 단말기는 FAIL) | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL` |
 | `/stech/kicc/postCraditPayment` | KICC 단말기 카드 결제 기록 | `PaymentCreaditKicc` | `PaymentResult` | `KiccCreaditPaymentSQL` |
 | `/stech/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKyocera` | `PaymentResult` | `CyberMoneyKyoceraPaymentSQL` |
 | `/stech/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
@@ -140,6 +140,7 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 끊긴 커넥션 재사용 | DB 재시작이나 네트워크 끊김 후에도 죽은 커넥션을 계속 빌려줬다. 이제 `SELECT 1` 로 확인 후 빌려준다 |
 | 커넥션 고갈 시 무한 대기 | 풀이 가득 차면 요청이 끝없이 기다렸다. 이제 10초 후 실패 처리한다 |
 | 커넥션 풀 최대값 20000 | 기본 100 으로 줄이고 `db.properties` 에서 바꿀 수 있게 했다 (단말기 4000대 기준) |
+| 미등록 단말기 결제 | 결제 기록 API 5개(`/postCraditPayment`, `/kicc/postCraditPayment`, `/printnuri/payment`, `/postCyberMoneyPayment`, `/kyocera/postCyberMoneyPayment`)가 먼저 `jw_terminal` 에 단말기 ID 가 있는지 확인한다. 없으면 기록·차감 없이 `FAIL`(reason `no terminal`, 프린트누리는 `result=FAIL`) |
 | 카드 결제마다 1초 대기 | 중복 승인번호를 막으려고 1초 기다린 뒤 지우던 `PaymentCK` 를 없애고, 승인번호별 잠금 안에서 확인·기록한다. 승인번호가 비어 있으면 중복 확인 없이 기록한다 (예전에는 하루 첫 건 말고 버려졌다) |
 | 가맹점 ID 를 3번째 컬럼으로 읽음 | `jw_terminal` 에서 `fran_id` 이름의 컬럼을 찾아 읽는다 (없을 때만 3번째 컬럼) |
 | 중계 서버 주소 확인 | 중계 서버(pay1.printnuri.com)에 `/jetwork/printnuri/pricepolicy`, `/jetwork/printnuri/payment`, `/jetwork/kyocera/postCyberMoneyPayment` 가 있는 것을 확인했다 (GET → 405). 지금 주소가 맞다 |
