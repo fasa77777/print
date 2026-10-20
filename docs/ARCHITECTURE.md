@@ -1,5 +1,7 @@
 # JetworkServer 코드 구조
 
+> 이 문서는 /stech 버전(API 주소 `/stech/...`) 기준입니다.
+
 무인 프린트·복사기 매장의 **결제 서버**입니다. 복사기 옆 결제 단말기와 복사기 에이전트가 이 서버에 결제·단말기·프린터 정보를 보내면, 서버는 MSSQL DB에 기록하고 결과를 돌려줍니다.
 
 - Spring Boot 2.3.1, Java 8, Maven
@@ -48,20 +50,19 @@
 
 ## 4. HTTP API
 
-모든 API 는 `POST`, `Content-Type: application/json` 입니다. 컨트롤러에 `@RequestMapping("/printnuri")` 가 붙어 있어서 모든 주소 앞에 `/printnuri` 가 붙습니다.
+모든 API 는 `POST`, `Content-Type: application/json` 입니다. 컨트롤러에 `@RequestMapping("/stech")` 가 붙어 있어서 모든 주소 앞에 `/stech` 가 붙습니다.
 
 | 주소 | 하는 일 | 요청 모델 | 응답 모델 | 사용하는 SQL 클래스 |
 |---|---|---|---|---|
-| `/printnuri/postTerminal` | 단말기 등록 확인, 버전 정보 갱신 | `Terminal` | `PayRresult` | `TerminalInfoSQL` |
-| `/printnuri/postCyberMoney` | 사이버머니 잔액 조회 (카드가 없으면 0원으로 새로 등록) | `CyberMoney` | `CyberMoney` | `UserCyberMoneySQL` |
-| `/printnuri/postCyberMoneyPayment` | 사이버머니 차감 결제 | `PaymentKicc` | `PaymentResult` | `CyberMoneyPaymentSQL` |
-| `/printnuri/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL`, `PaymentCK` |
-| `/printnuri/kicc/postCraditPayment` | KICC 단말기 카드 결제 기록 | `PaymentCreaditKicc` | `PaymentResult` | `KiccCreaditPaymentSQL` |
-| `/printnuri/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 결제 (**현재 비활성**, 빈 응답) | `PaymentKyocera` | `PaymentResult` | (주석 처리됨) |
-| `/printnuri/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
-| `/printnuri/printnuri/payment` | 프린트누리 결제 기록 | `PrintNuriPay` | `PriceSendResult` | `PrintNuriCreaditPaymentSQL` |
-| `/printnuri/xerox/xeroxPayment` | Xerox 출력 결제: 단말기에 결제를 요청하고 결과가 올 때까지 대기 | `XeroxPay` | `PriceXeroxSendResult` | (소켓 통신) |
-| `/printnuri/postPrinter` | 프린터 상태·카운터·토너 정보 등록/갱신 | `Printer` | `PrinterResult` | `PrinterSQL` |
+| `/stech/postTerminal` | 단말기 등록 확인, 에이전트 버전 갱신 | `Terminal` | `PayRresult` | `TerminalInfoSQL` |
+| `/stech/postCyberMoney` | 사이버머니 잔액 조회 (카드가 없으면 0원으로 새로 등록) | `CyberMoney` | `CyberMoney` | `UserCyberMoneySQL` |
+| `/stech/postCyberMoneyPayment` | 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKicc` | `PaymentResult` | `CyberMoneyPaymentSQL` |
+| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL`, `PaymentCK` |
+| `/stech/kicc/postCraditPayment` | KICC 단말기 카드 결제 기록 | `PaymentCreaditKicc` | `PaymentResult` | `KiccCreaditPaymentSQL` |
+| `/stech/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKyocera` | `PaymentResult` | `CyberMoneyKyoceraPaymentSQL` |
+| `/stech/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
+| `/stech/printnuri/payment` | 프린트누리 결제 기록 | `PrintNuriPay` | `PriceSendResult` | `PrintNuriCreaditPaymentSQL` |
+| `/stech/xerox/xeroxPayment` | Xerox 출력 결제: 단말기에 결제를 요청하고 결과가 올 때까지 대기 | `XeroxPay` | `PriceXeroxSendResult` | (소켓 통신) |
 
 ### Xerox 결제 흐름 (`/xerox/xeroxPayment`)
 
@@ -89,7 +90,7 @@
 
 | 테이블 | 용도 | 코드에 나오는 컬럼 |
 |---|---|---|
-| `jw_terminal` | 결제 단말기 | `terminal_id`, `serial`, `fran_id`(3번째 컬럼), `agent_version`, `terminalVersion`, `update`, `last_dt`(마지막 결제 시각) |
+| `jw_terminal` | 결제 단말기 | `terminal_id`, `serial`, `fran_id`(3번째 컬럼), `agent_version`, `update`, `last_dt`(마지막 결제 시각) |
 | `jw_franchise` | 가맹점(매장) | `fran_id`, `fran_name` |
 | `jw_paper` | 단말기별 용지 가격 | `terminalID`, `paper_size`, `paper_colorYN`, `paper_price` |
 | `jw_payment` | 결제 내역 | `id`, `terminal_id`, `payment_pay`, `payment_type`, `payment_paperType`, `payment_colorYN`, `payment_ok`(승인번호), `payment_printType`, `payment_cardName`, `payment_totalCount`, `userCard`, `cyberNo`, `reg_date` |
@@ -139,6 +140,7 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 소켓 서버가 단말기를 하나씩 처리 | 접속 하나를 중계 서버 HTTP 요청까지 끝내야 다음 단말기를 받았다. 이제 작업 스레드 50개가 동시에 처리하고, 밀리면 1000개까지 줄을 세운다 |
 | 스레드 간 공유 상태가 안 보이던 문제 | 소켓 스레드가 바꾼 결제 결과(`chk`, `chk1`)를 HTTP 스레드가 못 볼 수 있었다. 공유 변수를 `volatile` 로 바꿨다 |
 | 카드사명 없는 결제 | 신용·체크카드 결제에서 발급사 코드가 없거나 목록에 없으면 카드사명을 빈 값 대신 `해외카드` 로 기록한다 (`CardCompanyName.getCardName`). 티머니·캐시비는 그대로 둔다 |
+| 결제번호 중복 차감 | 사이버머니 결제(`/postCyberMoneyPayment`)도 같은 카드·결제번호(`cyberNo`)로 이미 처리된 결제면 차감하지 않고 FAIL(`duplicate`) 로 응답한다 |
 | 단말기 마지막 결제 시각 | 결제 내역(`jw_payment`)이 정상 등록되면 그 단말기의 `jw_terminal.last_dt` 를 현재 시각으로 갱신한다. 결제 기록을 먼저 커밋한 뒤 갱신하므로, 갱신이 실패해도 결제 기록은 남는다 |
 | 기타 교통카드 결제 누락 | `/postCraditPayment` 에서 카드가 아니면서 티머니(TM)·캐시비(EB)도 아닌 교통카드 결제는 기록 없이 버려졌다. 이제 결제 종류·카드사명 모두 `교통카드` 로 기록한다 |
 | 티머니 판정 누락 | `JSonForm` 이 `R33=TM` 처럼 접두어가 붙은 값을 보내 티머니 결제가 신용카드로 기록됐다. 접두어를 떼고 보낸다 |
@@ -149,14 +151,14 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 카드번호 로그 노출 | 카드번호는 `Mask.card()` 로 가려서 출력하고, SQL 문과 요청 본문은 더 이상 출력하지 않는다 |
 | 커넥션·Statement 누수 | 모든 SQL 클래스가 try-with-resources 로 자원을 닫고 커넥션을 반납한다 |
 
-교세라 사이버머니 처리(`CyberMoneyKyoceraPaymentSQL`)도 같은 방식으로 고쳤지만, API 는 여전히 꺼져 있다. 켜는 방법은 `PostJetworkController` 의 `/kyocera/postCyberMoneyPayment` 주석에 적어 두었다.
+교세라 사이버머니 결제(`/stech/kyocera/postCyberMoneyPayment`)도 같은 방식으로 고쳐서 켜 두었다.
+
+프린터 상태 API(`/postPrinter`)는 /stech 버전에 없어서 뺐다. `Printer`, `PrinterResult`, `PrinterSQL` 클래스는 남아 있지만 쓰지 않는다.
 
 ### 남은 문제 (확인이 필요해서 고치지 않음)
 
-1. **주소 불일치**: 컨트롤러 주소는 `/printnuri/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
-2. **프린터 테이블 DB 불일치**: `PrinterSQL` 은 `SONTECH` DB 에서 존재를 확인하고 현재 DB(`GWS`)에 등록·갱신한다. 두 테이블이 다르면 매번 새로 INSERT 된다.
-3. **사이버머니 결제번호 중복 확인 꺼짐**: `/postCyberMoneyPayment` 는 기존 코드에서 결제번호(`cyberNo`) 중복 확인이 꺼져 있어 그대로 두었다. 같은 요청이 두 번 오면 두 번 차감된다. (교세라 쪽은 켜져 있음)
-4. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
-5. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
-6. `System.out.println` 과 `logger` 가 섞여 있다.
-7. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+1. **주소 불일치**: 컨트롤러 주소는 `/stech/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
+2. **Xerox 결제 상태가 static 변수 하나**: 단말기가 2대 이상이거나 결제가 동시에 들어오면 결과가 섞인다. 단말기별로 상태를 나눠야 한다.
+3. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
+4. `System.out.println` 과 `logger` 가 섞여 있다.
+5. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.

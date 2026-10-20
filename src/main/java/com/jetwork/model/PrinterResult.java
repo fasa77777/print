@@ -1,7 +1,7 @@
 package com.jetwork.model;
 
 /**
- * 프린터 등록 응답 (/printnuri/postPrinter).
+ * 프린터 등록 응답 (예전 /printnuri/postPrinter. /stech 버전에는 이 API 가 없어 지금은 쓰지 않음).
  */
 public class PrinterResult {
 	/** 프린터 시리얼 번호 */

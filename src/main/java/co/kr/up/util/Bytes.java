@@ -4,26 +4,26 @@ import java.util.StringTokenizer;
 
 
 /** 
- * ÀÓ½Ã ÀúÀå À¯Æ¿ 
+ * ì„ì‹œ ì €ì¥ ìœ í‹¸ 
  */ 
 /**
- * ÆÄÀÏ¸í : Bytes.java
- * ÀÛ¼ºÀÏ : 2013. 07. 23
- * ÀÛ¼ºÀÚ : son
- * ÆÄÀÏ¼³¸í : 
+ * íŒŒì¼ëª… : Bytes.java
+ * ì‘ì„±ì¼ : 2013. 07. 23
+ * ì‘ì„±ì : son
+ * íŒŒì¼ì„¤ëª… : 
  */
 public class Bytes { 
  
     //public static Byte DEFAULT_BYTE = new Byte((byte) 0); 
  
     /** 
-     * <p>¹®ÀÚ¿­À» ¹ÙÀÌÆ®·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ë¬¸ìì—´ì„ ë°”ì´íŠ¸ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * <pre> ByteUtils.toByte("1", *) = 0x01 ByteUtils.toByte("-1", *) = 0xff 
      * ByteUtils.toByte("a", 0x00) = 0x00 </pre> 
      *  
      * @param value 
-     *            10Áø¼ö ¹®ÀÚ¿­ °ª 
+     *            10ì§„ìˆ˜ ë¬¸ìì—´ ê°’ 
      * @param defaultValue 
      * @return 
      */ 
@@ -37,13 +37,13 @@ public class Bytes {
     } 
  
     /** 
-     * <p>¹®ÀÚ¿­À» ¹ÙÀÌÆ®·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ë¬¸ìì—´ì„ ë°”ì´íŠ¸ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * <pre> ByteUtils.toByteObject("1", *) = 0x01 ByteUtils.toByteObject("-1", 
      * *) = 0xff ByteUtils.toByteObject("a", 0x00) = 0x00 </pre> 
      *  
      * @param value 
-     *            10Áø¼ö ¹®ÀÚ¿­ °ª 
+     *            10ì§„ìˆ˜ ë¬¸ìì—´ ê°’ 
      * @param defaultValue 
      * @return 
      */ 
@@ -57,8 +57,8 @@ public class Bytes {
     } 
  
     /** 
-     * <p>singed byte¸¦ unsinged byte·Î º¯È¯ÇÑ´Ù.</p> <p>Java¿¡´Â unsinged Å¸ÀÔÀÌ ¾ø±â¶§¹®¿¡, 
-     * int·Î ¹İÈ¯ÇÑ´Ù.(b & 0xff)</p> 
+     * <p>singed byteë¥¼ unsinged byteë¡œ ë³€í™˜í•œë‹¤.</p> <p>Javaì—ëŠ” unsinged íƒ€ì…ì´ ì—†ê¸°ë•Œë¬¸ì—, 
+     * intë¡œ ë°˜í™˜í•œë‹¤.(b & 0xff)</p> 
      *  
      * @param b 
      *            singed byte 
@@ -69,7 +69,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>ÀÔ·ÂÇÑ ¹ÙÀÌÆ® ¹è¿­(4¹ÙÀÌÆ®)À» int ÇüÀ¸·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ì…ë ¥í•œ ë°”ì´íŠ¸ ë°°ì—´(4ë°”ì´íŠ¸)ì„ int í˜•ìœ¼ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param src 
      * @param srcPos 
@@ -84,7 +84,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>ÀÔ·ÂÇÑ ¹ÙÀÌÆ® ¹è¿­(4¹ÙÀÌÆ®)À» int ÇüÀ¸·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ì…ë ¥í•œ ë°”ì´íŠ¸ ë°°ì—´(4ë°”ì´íŠ¸)ì„ int í˜•ìœ¼ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param src 
      * @return 
@@ -94,7 +94,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>ÀÔ·ÂÇÑ ¹ÙÀÌÆ® ¹è¿­(8¹ÙÀÌÆ®)À» long ÇüÀ¸·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ì…ë ¥í•œ ë°”ì´íŠ¸ ë°°ì—´(8ë°”ì´íŠ¸)ì„ long í˜•ìœ¼ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param src 
      * @param srcPos 
@@ -109,7 +109,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>ÀÔ·ÂÇÑ ¹ÙÀÌÆ® ¹è¿­(8¹ÙÀÌÆ®)À» long ÇüÀ¸·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>ì…ë ¥í•œ ë°”ì´íŠ¸ ë°°ì—´(8ë°”ì´íŠ¸)ì„ long í˜•ìœ¼ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param src 
      * @return 
@@ -119,7 +119,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>int ÇüÀÇ °ªÀ» ¹ÙÀÌÆ® ¹è¿­(4¹ÙÀÌÆ®)·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>int í˜•ì˜ ê°’ì„ ë°”ì´íŠ¸ ë°°ì—´(4ë°”ì´íŠ¸)ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param value 
      * @param dest 
@@ -132,7 +132,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>int ÇüÀÇ °ªÀ» ¹ÙÀÌÆ® ¹è¿­(4¹ÙÀÌÆ®)·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>int í˜•ì˜ ê°’ì„ ë°”ì´íŠ¸ ë°°ì—´(4ë°”ì´íŠ¸)ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param value 
      * @return 
@@ -144,7 +144,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>long ÇüÀÇ °ªÀ» ¹ÙÀÌÆ® ¹è¿­(8¹ÙÀÌÆ®)·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>long í˜•ì˜ ê°’ì„ ë°”ì´íŠ¸ ë°°ì—´(8ë°”ì´íŠ¸)ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param value 
      * @param dest 
@@ -157,7 +157,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>long ÇüÀÇ °ªÀ» ¹ÙÀÌÆ® ¹è¿­(8¹ÙÀÌÆ®)·Î º¯È¯ÇÑ´Ù.</p> 
+     * <p>long í˜•ì˜ ê°’ì„ ë°”ì´íŠ¸ ë°°ì—´(8ë°”ì´íŠ¸)ë¡œ ë³€í™˜í•œë‹¤.</p> 
      *  
      * @param value 
      * @return 
@@ -169,17 +169,17 @@ public class Bytes {
     } 
  
     /** 
-     * <p>8, 10, 16Áø¼ö ¹®ÀÚ¿­À» ¹ÙÀÌÆ® ¹è¿­·Î º¯È¯ÇÑ´Ù.</p> <p>8, 10Áø¼öÀÎ °æ¿ì´Â ¹®ÀÚ¿­ÀÇ 3ÀÚ¸®°¡, 16Áø¼öÀÎ 
-     * °æ¿ì´Â 2ÀÚ¸®°¡, ÇÏ³ªÀÇ byte·Î ¹Ù²ï´Ù.</p> 
+     * <p>8, 10, 16ì§„ìˆ˜ ë¬¸ìì—´ì„ ë°”ì´íŠ¸ ë°°ì—´ë¡œ ë³€í™˜í•œë‹¤.</p> <p>8, 10ì§„ìˆ˜ì¸ ê²½ìš°ëŠ” ë¬¸ìì—´ì˜ 3ìë¦¬ê°€, 16ì§„ìˆ˜ì¸ 
+     * ê²½ìš°ëŠ” 2ìë¦¬ê°€, í•˜ë‚˜ì˜ byteë¡œ ë°”ë€ë‹¤.</p> 
      *  
      * <pre> ByteUtils.toBytes(null) = null ByteUtils.toBytes("0E1F4E", 16) = 
      * [0x0e, 0xf4, 0x4e] ByteUtils.toBytes("48414e", 16) = [0x48, 0x41, 0x4e] 
      * </pre> 
      *  
      * @param digits 
-     *            ¹®ÀÚ¿­ 
+     *            ë¬¸ìì—´ 
      * @param radix 
-     *            Áø¼ö(8, 10, 16¸¸ °¡´É) 
+     *            ì§„ìˆ˜(8, 10, 16ë§Œ ê°€ëŠ¥) 
      * @return 
      * @throws NumberFormatException 
      */ 
@@ -199,14 +199,14 @@ public class Bytes {
     } 
  
     /** 
-     * <p>16Áø¼ö ¹®ÀÚ¿­À» ¹ÙÀÌÆ® ¹è¿­·Î º¯È¯ÇÑ´Ù.</p> <p>¹®ÀÚ¿­ÀÇ 2ÀÚ¸®°¡ ÇÏ³ªÀÇ byte·Î ¹Ù²ï´Ù.</p> 
+     * <p>16ì§„ìˆ˜ ë¬¸ìì—´ì„ ë°”ì´íŠ¸ ë°°ì—´ë¡œ ë³€í™˜í•œë‹¤.</p> <p>ë¬¸ìì—´ì˜ 2ìë¦¬ê°€ í•˜ë‚˜ì˜ byteë¡œ ë°”ë€ë‹¤.</p> 
      *  
      * <pre> ByteUtils.hexStringToBytes(null) = null 
      * ByteUtils.hexStringToBytes("0E1F4E") = [0x0e, 0xf4, 0x4e] 
      * ByteUtils.hexStringToBytes("48414e") = [0x48, 0x41, 0x4e] </pre> 
      *  
      * @param digits 
-     *            16Áø¼ö ¹®ÀÚ¿­ 
+     *            16ì§„ìˆ˜ ë¬¸ìì—´ 
      * @return 
      * @throws NumberFormatException 
      * @see HexUtils.toBytes(String) 
@@ -225,7 +225,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>unsigned byte(¹ÙÀÌÆ®)¸¦ 16Áø¼ö ¹®ÀÚ¿­·Î ¹Ù²Û´Ù.</p> 
+     * <p>unsigned byte(ë°”ì´íŠ¸)ë¥¼ 16ì§„ìˆ˜ ë¬¸ìì—´ë¡œ ë°”ê¾¼ë‹¤.</p> 
      *  
      * ByteUtils.toHexString((byte)1) = "01" ByteUtils.toHexString((byte)255) = 
      * "ff" 
@@ -243,7 +243,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>unsigned byte(¹ÙÀÌÆ®) ¹è¿­À» 16Áø¼ö ¹®ÀÚ¿­·Î ¹Ù²Û´Ù.</p> 
+     * <p>unsigned byte(ë°”ì´íŠ¸) ë°°ì—´ì„ 16ì§„ìˆ˜ ë¬¸ìì—´ë¡œ ë°”ê¾¼ë‹¤.</p> 
      *  
      * <pre> ByteUtils.toHexString(null) = null ByteUtils.toHexString([(byte)1, 
      * (byte)255]) = "01ff" </pre> 
@@ -265,7 +265,7 @@ public class Bytes {
     } 
  
     /** 
-     * <p>µÎ ¹è¿­ÀÇ °ªÀÌ µ¿ÀÏÇÑÁö ºñ±³ÇÑ´Ù.</p> 
+     * <p>ë‘ ë°°ì—´ì˜ ê°’ì´ ë™ì¼í•œì§€ ë¹„êµí•œë‹¤.</p> 
      *  
      * <pre> ArrayUtils.equals(null, null) = true ArrayUtils.equals(["one", 
      * "two"], ["one", "two"]) = true ArrayUtils.equals(["one", "two"], 
@@ -273,7 +273,7 @@ public class Bytes {
      *  
      * @param array1 
      * @param array2 
-     * @return µ¿ÀÏÇÏ¸é <code>true</code>, ¾Æ´Ï¸é <code>false</code> 
+     * @return ë™ì¼í•˜ë©´ <code>true</code>, ì•„ë‹ˆë©´ <code>false</code> 
      */ 
     public static boolean equals(byte[] array1, byte[] array2) { 
         if (array1 == array2) { return true; } 

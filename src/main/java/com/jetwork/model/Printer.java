@@ -1,7 +1,7 @@
 package com.jetwork.model;
 
 /**
- * 프린터 상태 정보 (/printnuri/postPrinter 요청 본문, printer 테이블).
+ * 프린터 상태 정보 (printer 테이블). 예전 /printnuri/postPrinter 요청 본문이었고, /stech 버전에는 이 API 가 없어 지금은 쓰지 않는다.
  */
 public class Printer {
 	/** 장치 ID */

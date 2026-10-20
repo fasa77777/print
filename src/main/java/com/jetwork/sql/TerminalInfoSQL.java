@@ -1,87 +1,62 @@
 package com.jetwork.sql;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.bin.ConnectionSQL;
 import com.jetwork.model.Terminal;
 
+/** 단말기 등록 확인과 버전 정보 갱신 (/stech/postTerminal). */
 public class TerminalInfoSQL {
-	private Connection conn;
-	private Statement stmt;
-	private ResultSet rs;
-	private boolean userFlag = false;
-	
-	public boolean setTerminal(Terminal terminal) {
-		//String money = "";
-		
+
+	public enum Status {
+		/** jw_terminal 에 단말기 ID 와 시리얼이 함께 등록되어 있음 */
+		REGISTERED,
+		/** 등록되지 않은 단말기 (또는 시리얼 불일치) */
+		NOT_REGISTERED,
+		/** DB 오류로 확인하지 못함 */
+		ERROR
+	}
+
+	/** 단말기 ID 와 시리얼이 등록되어 있으면 버전 정보를 갱신한다. */
+	public Status setTerminal(Terminal terminal) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		 conn  = dbcp.getConnection();
-		
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return Status.ERROR;
+		}
+		boolean registered = false;
 		try {
 			conn.setAutoCommit(false);
-			
-			
-			String stringSQL ="select * from [dbo].[jw_terminal] where [terminal_id]  = '"+terminal.getTerminalID()+"'"
-					+ " and [serial] = '"+terminal.getSerial()+"' ";         //and [TerminalSerial] = '"+terminal.getTerminalSerial()+"'";
-			System.out.println(stringSQL);
-			stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			rs = stmt.executeQuery(stringSQL);
-			while(rs.next()){
-				//money = rs.getString(2);
-				//money = rs.getString("cyberMoney");
-				
-				System.out.println("사용중인 복사기");
-				userFlag = true;
+
+			try (PreparedStatement ps = conn.prepareStatement(
+					"SELECT 1 FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
+				ps.setString(1, terminal.getTerminalID());
+				ps.setString(2, terminal.getSerial());
+				try (ResultSet rs = ps.executeQuery()) {
+					registered = rs.next();
+				}
 			}
-			
-			if(userFlag){
-				System.out.println("사용중인 복사기   111");
-					
-				String updateSQL = "update [dbo].[jw_terminal]"
-						+ " set [agent_version] = '"+terminal.getAgentVersion()+"' , [update] = getdate() "
-						+ " where [terminal_id]  = '"+terminal.getTerminalID()+"' ";
-				
-				System.out.println(updateSQL);
-				stmt.executeUpdate(updateSQL);		
-				
-		
+
+			if (registered) {
+				System.out.println("사용중인 복사기 " + terminal.getTerminalID());
+				try (PreparedStatement ps = conn.prepareStatement(
+						"UPDATE [dbo].[jw_terminal] SET [agent_version] = ?, [update] = getdate() "
+								+ " WHERE [terminal_id] = ?")) {
+					ps.setString(1, terminal.getAgentVersion());
+					ps.setString(2, terminal.getTerminalID());
+					ps.executeUpdate();
+				}
 			}
-			
 			conn.commit();
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
-		
-		}finally{
-			//this.freeConn();
-			dbcp.freeConnection(conn, stmt, rs);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return Status.ERROR;
+		} finally {
+			dbcp.freeConnection(conn);
 		}
-		
-		System.out.println("userFlag ==");
-		return userFlag;
-	}
-	
-	
-	public void freeConn(){
-		try {
-			if(stmt != null){
-				stmt.close();
-			}
-			if(rs != null){
-				rs.close();
-			}
-		
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		//dm.freeConnection("mssql", conn);
+		return registered ? Status.REGISTERED : Status.NOT_REGISTERED;
 	}
 }

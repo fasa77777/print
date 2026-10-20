@@ -1,8 +1,14 @@
 package com.jetwork.model;
 
+/**
+ * 가격 정책 응답 (/stech/printnuri/pricepolicy, /stech/printnuri/payment).
+ */
 public class PriceSendResult {
+	/** A4 컬러 장당 가격 */
 	String A4color;
+	/** A4 흑백 장당 가격 */
 	String A4mono;
+	/** 처리 결과 (OK) */
 	String result;
 	public String getA4color() {
 		return A4color;

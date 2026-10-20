@@ -8,7 +8,7 @@ import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.Printer;
 
 /**
- * 프린터 상태 등록/갱신 (/printnuri/postPrinter).
+ * 프린터 상태 등록/갱신 (예전 /printnuri/postPrinter. /stech 버전에는 이 API 가 없어 지금은 쓰지 않음).
  *
  * 주의: 존재 확인은 [SONTECH].[dbo].[printer] 에서 하고, 등록·갱신은 현재 DB(GWS)의 [dbo].[printer] 에 한다.
  * 기존 코드 그대로이며, 두 테이블이 같은 것인지 확인이 필요하다. (docs/ARCHITECTURE.md 참고)
