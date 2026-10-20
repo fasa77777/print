@@ -17,12 +17,24 @@ public class CreaditPaymentSQL {
 
 	/**
 	 * 결제 한 건을 jw_payment 에 기록한다.
-	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록, 카드사명을 모르면 해외카드
+	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
+	 *   카드사명을 모르면 해외카드
 	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 나머지는 교통카드로 기록
 	 * 기록 후 단말기의 last_dt 를 갱신한다. 반환값은 쓰지 않는다 (항상 빈 문자열).
 	 */
+	/** 승인번호별 잠금. 승인번호를 해시해서 256개 잠금 중 하나를 쓴다 (메모리가 늘지 않게) */
+	private static final Object[] APPROVAL_LOCKS = new Object[256];
+	static {
+		for (int i = 0; i < APPROVAL_LOCKS.length; i++) {
+			APPROVAL_LOCKS[i] = new Object();
+		}
+	}
+
+	private static Object approvalLock(String approvalNo) {
+		return APPROVAL_LOCKS[(approvalNo.hashCode() & 0x7fffffff) % APPROVAL_LOCKS.length];
+	}
+
 	public String setPayment(PaymentKicc payment) {
-		logger.info("R09=" + payment.getR09() + " R11=" + payment.getR11() + " R33=" + payment.getR33());
 
 		String r11 = payment.getR11();
 		boolean isCard = "Y".equals(r11) || "N".equals(r11);
@@ -30,14 +42,21 @@ public class CreaditPaymentSQL {
 		if (isCard) {
 			String payType = "Y".equals(r11) ? "체크카드" : "신용카드";
 
-			// 오늘 같은 승인번호로 이미 기록된 결제가 있으면 다시 기록하지 않는다.
-			PaymentCK ck = new PaymentCK();
-			if (!ck.setTerminal(payment.getR09())) {
-				return "";
+			String approvalNo = CardPaymentLedger.trim(payment.getR09());
+			String cardName = CardCompanyName.getCardName(payment.getR12());
+			if (approvalNo.isEmpty()) {
+				// 승인번호가 없으면 중복을 가릴 수 없으므로 그대로 기록한다.
+				// (예전에는 빈 승인번호끼리 중복으로 보아 하루 첫 건 말고는 버려졌다)
+				logger.warn("승인번호(R09) 없는 카드 결제 terminalID={} amount={}", payment.getTerminalID(), payment.getTotalAmount());
+				insert(payment, payType, approvalNo, cardName);
+			} else {
+				// 오늘 같은 승인번호로 이미 기록된 결제가 있으면 다시 기록하지 않는다.
+				// 같은 승인번호의 요청이 동시에 들어와도 한 건만 기록되도록, 승인번호별로 차례로 처리한다.
+				// (예전에는 1초 기다린 뒤 중복을 지우는 방식이라 결제마다 1초씩 늦어졌다)
+				synchronized (approvalLock(approvalNo)) {
+					insertIfNotExistsToday(payment, payType, approvalNo, cardName);
+				}
 			}
-			ck.setTerminal1(payment.getR09());
-
-			insertIfNotExistsToday(payment, payType, payment.getR09(), CardCompanyName.getCardName(payment.getR12()));
 		} else {
 			String r33 = CardPaymentLedger.trim(payment.getR33());
 			// 교통카드 결제는 승인번호 대신 현재 시각(밀리초)을 기록한다.
@@ -48,7 +67,7 @@ public class CreaditPaymentSQL {
 				insert(payment, "캐시비", now, "캐시비");
 			} else {
 				// 티머니·캐시비가 아닌 교통카드(레일플러스 등)는 예전에는 기록 없이 버려졌다.
-				logger.info("기타 교통카드 결제 R33=" + r33);
+				logger.info("기타 교통카드 결제 terminalID={} R33={}", payment.getTerminalID(), r33);
 				insert(payment, "교통카드", now, "교통카드");
 			}
 		}

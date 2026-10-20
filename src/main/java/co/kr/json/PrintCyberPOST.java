@@ -12,8 +12,8 @@ public class PrintCyberPOST {
 
 	private static final Logger logger = LoggerFactory.getLogger(PrintCyberPOST.class);
 
-	// 기존 주소에 있던 '//' 를 그대로 유지한다.
-	private static final String URL = JsonHttpClient.BASE_URL + "//kyocera/postCyberMoneyPayment";
+	// 중계 서버에서 /jetwork/kyocera/postCyberMoneyPayment 가 있는 것을 확인했다. (예전 주소의 '//' 는 정리)
+	private static final String URL = JsonHttpClient.BASE_URL + "/kyocera/postCyberMoneyPayment";
 
 	public void putPost(JSONObject jo, TerminalState terminal) {
 		try {
