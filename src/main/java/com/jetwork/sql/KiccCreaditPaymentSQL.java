@@ -1,69 +1,56 @@
-/*
- * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
- */
 package com.jetwork.sql;
 
-import com.jetwork.bin.ConnectionPool;
-import com.jetwork.model.CardCompanyName;
-import com.jetwork.model.PaymentCreaditKicc;
-import com.jetwork.sql.DBCPConnectionMgr;
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jetwork.bin.ConnectionPool;
+import com.jetwork.model.CardCompanyName;
+import com.jetwork.model.RecordStatus;
+import com.jetwork.model.PaymentCreaditKicc;
+
+/** KICC 단말기 결제 기록 (/stech/kicc/postCraditPayment). */
 public class KiccCreaditPaymentSQL {
-    private Connection conn;
-    private Statement stmt;
-    private ResultSet rs;
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    public String setPayment(PaymentCreaditKicc payment) {
-        String money = "";
-        DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-        this.conn = dbcp.getConnection();
-        try {
-            try {
-                this.conn.setAutoCommit(false);
-                String payType = "";
-                this.logger.info(payment.getR10());
-                this.logger.info(payment.getR12());
-                this.logger.info(payment.getR13());
-                payType = "Y".equals(payment.getR10()) ? "체크카드" : "신용카드";
-                if ("TM".equals(payment.getR33())) {
-                    payType = "티머니";
-                } else if ("EB".equals(payment.getR33())) {
-                    payType = "캐시비";
-                }
-                String insertSQL = "INSERT INTO [dbo].[jw_payment] ([terminal_id],[payment_pay],[payment_type],[payment_paperType],[payment_colorYN],[payment_ok],[payment_printType],[reg_date],[payment_cardName]) VALUES  ('" + payment.getTerminalID() + "','" + payment.getTotalAmount() + "',N'" + payType + "','" + payment.getPaperSize() + "'," + "'" + payment.getColor() + "','" + payment.getR09() + "','" + payment.getJobType() + "',getdate(), N'" + CardCompanyName.getName(payment.getR12().trim()) + "' );";
-                this.stmt = this.conn.createStatement(1004, 1007);
-                this.stmt.executeUpdate(insertSQL);
-                this.conn.commit();
-            }
-            catch (SQLException e) {
-                e.printStackTrace();
-                dbcp.freeConnection(this.conn, this.stmt);
-            }
-        }
-        finally {
-            dbcp.freeConnection(this.conn, this.stmt);
-        }
-        return money;
-    }
+	private static final Logger logger = LoggerFactory.getLogger(KiccCreaditPaymentSQL.class);
 
-    public void freeConn() {
-        try {
-            if (this.stmt != null) {
-                this.stmt.close();
-            }
-            if (this.rs != null) {
-                this.rs.close();
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+	/**
+	 * 결제 한 건을 jw_payment 에 기록한다.
+	 * R10 이 Y 면 체크카드, 아니면 신용카드. R33 이 TM/EB 면 티머니/캐시비.
+	 */
+	public RecordStatus setPayment(PaymentCreaditKicc payment) {
+		String payType = "Y".equals(payment.getR10()) ? "체크카드" : "신용카드";
+		String r33 = CardPaymentLedger.trim(payment.getR33()); // "TM " 처럼 공백이 붙어 와도 구분되게
+		if ("TM".equals(r33)) {
+			payType = "티머니";
+		} else if ("EB".equals(r33)) {
+			payType = "캐시비";
+		}
+
+		// 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다. 티머니·캐시비는 카드사명을 쓰지 않는다.
+		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
+		String cardName = isCard ? CardCompanyName.getCardName(payment.getR12())
+				: CardCompanyName.getName(CardPaymentLedger.trim(payment.getR12()));
+
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return RecordStatus.ERROR;
+		}
+		try {
+			conn.setAutoCommit(false);
+			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
+					payment.getPaperSize(), payment.getColor(), payment.getR09(), payment.getJobType(),
+					cardName, null);
+			conn.commit();
+			return RecordStatus.OK;
+		} catch (Exception e) {
+			logger.error("KiccCreaditPaymentSQL 처리 중 오류", e);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return RecordStatus.ERROR;
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+	}
 }

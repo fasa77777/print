@@ -1,26 +1,38 @@
 package com.jetwork.sql;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
 /**
- * DB 접속 정보 읽기. (실서버 jar 에는 없던 클래스 — 소스에 적혀 있던 접속 정보를 빼기 위해 추가)
+ * DB 접속 정보를 한 곳에서 읽어 오는 클래스.
  *
- * 읽는 순서 (환경변수가 있으면 환경변수가 우선)
+ * 읽는 순서 (뒤에 있는 값이 앞의 값을 덮어씀)
  *   1. classpath 의 db.properties  (src/main/resources/db.properties, Git 에는 올리지 않음)
- *      db.url / db.username / db.password
- *   2. 환경변수 DB_URL, DB_USERNAME, DB_PASSWORD
+ *   2. 환경변수 DB_URL, DB_USERNAME, DB_PASSWORD  (운영 서버에서 쓰기 좋음)
+ *
+ * 커넥션 풀 크기도 db.properties 의 db.pool.maxActive / db.pool.maxIdle 로 바꿀 수 있다.
  *
  * db.properties 는 src/main/resources/db.properties.example 을 복사해서 만든다.
  */
 public final class DbConfig {
+
+	private static final Logger logger = LoggerFactory.getLogger(DbConfig.class);
 
 	private static final String RESOURCE = "/db.properties";
 
 	private static final String url;
 	private static final String username;
 	private static final String password;
+	private static final int poolMaxActive;
+	private static final int poolMaxIdle;
+
+	/** 풀 크기 기본값. 실서버 jar 와 같은 최대 200개 / 유휴 50개 */
+	private static final int DEFAULT_POOL_MAX_ACTIVE = 200;
+	private static final int DEFAULT_POOL_MAX_IDLE = 50;
 
 	static {
 		Properties props = new Properties();
@@ -29,13 +41,19 @@ public final class DbConfig {
 				props.load(is);
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("DbConfig 처리 중 오류", e);
 		}
+
 		url = pick("DB_URL", props.getProperty("db.url"));
 		username = pick("DB_USERNAME", props.getProperty("db.username"));
 		password = pick("DB_PASSWORD", props.getProperty("db.password"));
+		poolMaxActive = intValue(props.getProperty("db.pool.maxActive"), DEFAULT_POOL_MAX_ACTIVE);
+		poolMaxIdle = intValue(props.getProperty("db.pool.maxIdle"), DEFAULT_POOL_MAX_IDLE);
+
 		if (url == null || url.isEmpty()) {
-			System.out.println("[DbConfig] DB 접속 정보가 없습니다. src/main/resources/db.properties 를 만들거나 환경변수 DB_URL 을 설정하세요.");
+			logger.warn("[DbConfig] DB 접속 정보가 없습니다. "
+					+ "src/main/resources/db.properties.example 을 db.properties 로 복사해서 값을 채우거나, "
+					+ "환경변수 DB_URL / DB_USERNAME / DB_PASSWORD 를 설정하세요.");
 		}
 	}
 
@@ -48,6 +66,27 @@ public final class DbConfig {
 			return env;
 		}
 		return fileValue == null ? null : fileValue.trim();
+	}
+
+	private static int intValue(String value, int defaultValue) {
+		if (value == null || value.trim().isEmpty()) {
+			return defaultValue;
+		}
+		try {
+			int v = Integer.parseInt(value.trim());
+			return v > 0 ? v : defaultValue;
+		} catch (NumberFormatException e) {
+			logger.warn("[DbConfig] 숫자가 아닌 풀 설정값 무시: " + value);
+			return defaultValue;
+		}
+	}
+
+	public static int getPoolMaxActive() {
+		return poolMaxActive;
+	}
+
+	public static int getPoolMaxIdle() {
+		return poolMaxIdle;
 	}
 
 	public static String getUrl() {

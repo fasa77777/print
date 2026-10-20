@@ -1,72 +1,68 @@
-/*
- * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
- */
 package com.jetwork.sql;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.Terminal;
-import com.jetwork.sql.DBCPConnectionMgr;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
+/** 단말기 등록 확인과 버전 정보 갱신 (/stech/postTerminal). */
 public class TerminalInfoSQL {
-    private Connection conn;
-    private Statement stmt;
-    private ResultSet rs;
-    private boolean userFlag = false;
 
-    public boolean setTerminal(Terminal terminal) {
-        block7: {
-            DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-            this.conn = dbcp.getConnection();
-            try {
-                try {
-                    this.conn.setAutoCommit(false);
-                    String stringSQL = "select * from [dbo].[jw_terminal] where [terminal_id]  = '" + terminal.getTerminalID() + "'" + " and [serial] = '" + terminal.getSerial() + "' ";
-                    System.out.println(stringSQL);
-                    this.stmt = this.conn.createStatement(1004, 1007);
-                    this.rs = this.stmt.executeQuery(stringSQL);
-                    while (this.rs.next()) {
-                        System.out.println("사용중인 복사기");
-                        this.userFlag = true;
-                    }
-                    if (this.userFlag) {
-                        System.out.println("사용중인 복사기   111");
-                        String updateSQL = "update [dbo].[jw_terminal] set [agent_version] = '" + terminal.getAgentVersion() + "' , [update] = getdate() , terminalVersion = '" + terminal.getTerminalVersion() + "' " + " where [terminal_id]  = '" + terminal.getTerminalID() + "' ";
-                        System.out.println(updateSQL);
-                        this.stmt.executeUpdate(updateSQL);
-                    }
-                    this.conn.commit();
-                }
-                catch (SQLException e) {
-                    e.printStackTrace();
-                    dbcp.freeConnection(this.conn, this.stmt, this.rs);
-                    break block7;
-                }
-            }
-            catch (Throwable throwable) {
-                dbcp.freeConnection(this.conn, this.stmt, this.rs);
-                throw throwable;
-            }
-            dbcp.freeConnection(this.conn, this.stmt, this.rs);
-        }
-        System.out.println("userFlag ==");
-        return this.userFlag;
-    }
+	private static final Logger logger = LoggerFactory.getLogger(TerminalInfoSQL.class);
 
-    public void freeConn() {
-        try {
-            if (this.stmt != null) {
-                this.stmt.close();
-            }
-            if (this.rs != null) {
-                this.rs.close();
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+	public enum Status {
+		/** jw_terminal 에 단말기 ID 와 시리얼이 함께 등록되어 있음 */
+		REGISTERED,
+		/** 등록되지 않은 단말기 (또는 시리얼 불일치) */
+		NOT_REGISTERED,
+		/** DB 오류로 확인하지 못함 */
+		ERROR
+	}
+
+	/** 단말기 ID 와 시리얼이 등록되어 있으면 버전 정보(agent_version, terminalVersion)를 갱신한다. */
+	public Status setTerminal(Terminal terminal) {
+		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
+		Connection conn = dbcp.getConnection();
+		if (conn == null) {
+			return Status.ERROR;
+		}
+		boolean registered = false;
+		try {
+			conn.setAutoCommit(false);
+
+			try (PreparedStatement ps = conn.prepareStatement(
+					"SELECT 1 FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
+				ps.setString(1, terminal.getTerminalID());
+				ps.setString(2, terminal.getSerial());
+				try (ResultSet rs = ps.executeQuery()) {
+					registered = rs.next();
+				}
+			}
+
+			if (registered) {
+				logger.debug("등록된 단말기 {}", terminal.getTerminalID());
+				try (PreparedStatement ps = conn.prepareStatement(
+						"UPDATE [dbo].[jw_terminal] SET [agent_version] = ?, [update] = getdate(), [terminalVersion] = ? "
+								+ " WHERE [terminal_id] = ?")) {
+					ps.setString(1, terminal.getAgentVersion());
+					ps.setString(2, terminal.getTerminalVersion());
+					ps.setString(3, terminal.getTerminalID());
+					ps.executeUpdate();
+				}
+			}
+			conn.commit();
+		} catch (Exception e) {
+			logger.error("TerminalInfoSQL 처리 중 오류", e);
+			CyberMoneyLedger.rollbackQuietly(conn);
+			return Status.ERROR;
+		} finally {
+			dbcp.freeConnection(conn);
+		}
+		return registered ? Status.REGISTERED : Status.NOT_REGISTERED;
+	}
 }
