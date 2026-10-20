@@ -17,7 +17,7 @@ import com.stech.Network.SocketServerDriver;
  * 서버 시작점.
  *
  * 1. Spring Boot 웹 서버(HTTP API, 포트는 application.properties 의 server.port)를 띄우고
- * 2. DB 커넥션 풀(DBCP)을 만들고
+ * 2. DB 커넥션 풀(DBCPConnectionMgr, HikariCP)을 만들고
  * 3. -Dsocket.server=true 이면 결제 단말기와 통신하는 소켓 서버(포트 10020)를 별도 스레드로 띄운다. (기본은 끔, 실서버 jar 와 같음)
  *
  * 컨트롤러는 이 클래스와 같은 패키지(com.jetwork.bin) 아래에 있어야 Spring 이 찾는다.

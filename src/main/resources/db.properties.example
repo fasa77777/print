@@ -7,6 +7,8 @@ db.url=jdbc:sqlserver://DB서버주소:25433;DatabaseName=GWS
 db.username=DB아이디
 db.password=DB비밀번호
 
-# 커넥션 풀 크기 (생략하면 기본값 = 실서버 jar 와 같은 200 / 50)
+# 커넥션 풀 크기 (생략하면 기본값)
+# 최대 커넥션 수. 기본 200 (실서버 jar 와 같음)
 #db.pool.maxActive=200
-#db.pool.maxIdle=50
+# 요청이 없어도 열어 두는 커넥션 수. 기본 10
+#db.pool.minIdle=10
