@@ -1,37 +1,67 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package co.kr.json;
 
+import com.jetwork.bin.JetworkServerApplication;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.jetwork.bin.TerminalState;
-
-/** 사이버머니 결제를 중계 서버의 /kyocera/postCyberMoneyPayment 로 요청하고, 그 단말기의 결제 결과로 기록한다. */
 public class PrintCyberPOST {
-
-	private static final Logger logger = LoggerFactory.getLogger(PrintCyberPOST.class);
-
-	// 중계 서버에서 /jetwork/kyocera/postCyberMoneyPayment 가 있는 것을 확인했다. (예전 주소의 '//' 는 정리)
-	private static final String URL = JsonHttpClient.BASE_URL + "/kyocera/postCyberMoneyPayment";
-
-	public void putPost(JSONObject jo, TerminalState terminal) {
-		try {
-			String json = JsonHttpClient.post(URL, jo);
-			JSONObject response = (JSONObject) new JSONParser().parse(json);
-			String result = (String) response.get("result");
-
-			if ("OK".equals(result)) {
-				terminal.setResult(true);
-				logger.info("사이버머니 승인 {}", terminal);
-			} else if ("FAIL".equals(result)) {
-				terminal.setResult(false);
-				logger.info("사이버머니 승인 거절 {} reason={}", terminal, response.get("reason"));
-			} else {
-				logger.warn("사이버머니 응답 결과를 알 수 없음 {} : {}", terminal, response);
-			}
-		} catch (Exception e) {
-			logger.warn("사이버머니 결제 요청 실패 {} : {}", terminal, e.toString());
-		}
-	}
+    public void putPost(JSONObject jo) {
+        String url = "http://pay1.printnuri.com:8090/jetwork//kyocera/postCyberMoneyPayment";
+        String json = "";
+        try {
+            System.out.println("2222222222222222222222222222222");
+            URL object = new URL(url);
+            HttpURLConnection con = (HttpURLConnection)object.openConnection();
+            con.setDoOutput(true);
+            con.setDoInput(true);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("Accept", "application/json");
+            con.setRequestMethod("POST");
+            System.out.println("33333333333333333333333333333333333");
+            OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream());
+            wr.write(jo.toString());
+            wr.flush();
+            System.out.println("444444444444444444444444444444444");
+            StringBuilder sb = new StringBuilder();
+            int HttpResult = con.getResponseCode();
+            if (HttpResult == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), "utf-8"));
+                String line = null;
+                while ((line = br.readLine()) != null) {
+                    sb.append(String.valueOf(line) + "\n");
+                }
+                br.close();
+                System.out.println("[" + sb.toString() + "]");
+                json = sb.toString();
+            } else {
+                System.out.println(con.getResponseMessage());
+            }
+            System.out.println("[" + json + "]");
+            JSONParser parser = new JSONParser();
+            JSONObject object1 = (JSONObject)parser.parse(json);
+            System.out.println("[" + object1 + "]");
+            String result = (String)object1.get((Object)"result");
+            System.out.println("result" + result);
+            if ("OK".equals(result)) {
+                JetworkServerApplication.chk = true;
+                JetworkServerApplication.chk1 = true;
+                System.out.println("승인");
+            } else if ("FAIL".equals(result)) {
+                JetworkServerApplication.chk = false;
+                JetworkServerApplication.chk1 = true;
+                System.out.println("승인거절");
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

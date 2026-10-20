@@ -1,29 +1,31 @@
+/*
+ * 실서버 JetworkServer-0.0.10-SNAPSHOT.jar (2022-04-18 빌드) 에서 역컴파일한 소스 (CFR 0.152).
+ */
 package co.kr.json;
 
+import co.kr.json.PrintCyberPOST;
+import com.jetwork.bin.JetworkServerApplication;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
 import org.json.simple.JSONObject;
 
-import com.jetwork.bin.TerminalState;
-
-/**
- * 사이버머니 카드 태그(단말기 작업 코드 06)를 받으면, 그 단말기에서 진행 중인 출력 작업 금액으로
- * 중계 서버의 /kyocera/postCyberMoneyPayment 에 결제를 요청한다. 결제번호는 현재 시각(yyyyMMddHHmmss)이다.
- */
 public class JSonForm2 {
-
-	public void setPaymentJson(TerminalState terminal, String card) {
-		JSONObject data = new JSONObject();
-		data.put("terminalID", terminal.getTerminalID());
-		data.put("totalAmount", terminal.getPrice());
-		data.put("cyberNo", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-		data.put("userCard", card);
-		data.put("jobType", "print");
-		data.put("paperSize", "A4");
-		data.put("color", terminal.getColor());
-		data.put("totalPages", terminal.getCount());
-
-		new PrintCyberPOST().putPost(data, terminal);
-	}
+    public void setPaymentJson(String card) {
+        JSONObject data = new JSONObject();
+        data.put((Object)"terminalID", (Object)JetworkServerApplication.terID);
+        data.put((Object)"totalAmount", (Object)JetworkServerApplication.printPrice);
+        SimpleDateFormat format1 = new SimpleDateFormat("yyyyMMddHHmmss");
+        Date time = new Date();
+        String time1 = format1.format(time);
+        System.out.println(time1);
+        data.put((Object)"cyberNo", (Object)time1);
+        data.put((Object)"userCard", (Object)card);
+        data.put((Object)"jobType", (Object)"print");
+        data.put((Object)"paperSize", (Object)"A4");
+        data.put((Object)"color", (Object)JetworkServerApplication.printColor);
+        data.put((Object)"totalPages", (Object)JetworkServerApplication.printCount);
+        System.out.println("11111111111111111111");
+        PrintCyberPOST ps = new PrintCyberPOST();
+        ps.putPost(data);
+    }
 }
