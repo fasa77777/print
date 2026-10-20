@@ -37,7 +37,6 @@ import com.jetwork.sql.CyberMoneyKyoceraPaymentSQL;
 import com.jetwork.sql.CyberMoneyPaymentSQL;
 import com.jetwork.sql.KiccCreaditPaymentSQL;
 import com.jetwork.sql.PaperPriceSQL;
-import com.jetwork.sql.PaymentCK;
 import com.jetwork.sql.PrintNuriCreaditPaymentSQL;
 import com.jetwork.sql.TerminalInfoSQL;
 import com.jetwork.sql.UserCyberMoneySQL;

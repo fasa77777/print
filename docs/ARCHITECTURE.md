@@ -57,7 +57,7 @@
 | `/stech/postTerminal` | 단말기 등록 확인, 에이전트 버전 갱신 | `Terminal` | `PayRresult` | `TerminalInfoSQL` |
 | `/stech/postCyberMoney` | 사이버머니 잔액 조회 (카드가 없으면 0원으로 새로 등록) | `CyberMoney` | `CyberMoney` | `UserCyberMoneySQL` |
 | `/stech/postCyberMoneyPayment` | 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKicc` | `PaymentResult` | `CyberMoneyPaymentSQL` |
-| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL`, `PaymentCK` |
+| `/stech/postCraditPayment` | 신용·체크카드, 티머니, 캐시비 결제 기록 | `PaymentKicc` | `PaymentResult` | `CreaditPaymentSQL` |
 | `/stech/kicc/postCraditPayment` | KICC 단말기 카드 결제 기록 | `PaymentCreaditKicc` | `PaymentResult` | `KiccCreaditPaymentSQL` |
 | `/stech/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 차감 결제 (같은 결제번호는 다시 차감하지 않음) | `PaymentKyocera` | `PaymentResult` | `CyberMoneyKyoceraPaymentSQL` |
 | `/stech/printnuri/pricepolicy` | 단말기별 A4 흑백·컬러 가격 조회 | `A4Terminal` | `PriceSendResult` | `PaperPriceSQL` |
@@ -140,7 +140,9 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 | 끊긴 커넥션 재사용 | DB 재시작이나 네트워크 끊김 후에도 죽은 커넥션을 계속 빌려줬다. 이제 `SELECT 1` 로 확인 후 빌려준다 |
 | 커넥션 고갈 시 무한 대기 | 풀이 가득 차면 요청이 끝없이 기다렸다. 이제 10초 후 실패 처리한다 |
 | 커넥션 풀 최대값 20000 | 기본 100 으로 줄이고 `db.properties` 에서 바꿀 수 있게 했다 (단말기 4000대 기준) |
-| 중복 확인 중 커넥션 점유 | `PaymentCK` 가 1초 기다리는 동안 커넥션을 붙잡고 있었다. 반납한 뒤 기다리도록 바꿨다 |
+| 카드 결제마다 1초 대기 | 중복 승인번호를 막으려고 1초 기다린 뒤 지우던 `PaymentCK` 를 없애고, 승인번호별 잠금 안에서 확인·기록한다. 승인번호가 비어 있으면 중복 확인 없이 기록한다 (예전에는 하루 첫 건 말고 버려졌다) |
+| 가맹점 ID 를 3번째 컬럼으로 읽음 | `jw_terminal` 에서 `fran_id` 이름의 컬럼을 찾아 읽는다 (없을 때만 3번째 컬럼) |
+| 중계 서버 주소 확인 | 중계 서버(pay1.printnuri.com)에 `/jetwork/printnuri/pricepolicy`, `/jetwork/printnuri/payment`, `/jetwork/kyocera/postCyberMoneyPayment` 가 있는 것을 확인했다 (GET → 405). 지금 주소가 맞다 |
 | 소켓 서버가 단말기를 하나씩 처리 | 접속 하나를 중계 서버 HTTP 요청까지 끝내야 다음 단말기를 받았다. 이제 작업 스레드 50개가 동시에 처리하고, 밀리면 1000개까지 줄을 세운다 |
 | 단말기 정보가 서버 전체에 하나 | 단말기 IP·ID·진행 중인 결제·결과를 static 변수 하나로 같이 써서, 단말기가 여러 대면 Xerox 결제 요청이 다른 단말기로 가거나 티머니·사이버머니가 다른 단말기 ID·금액으로 기록됐다. 단말기(IP)별 `TerminalState` 로 나눴다 |
 | 가격 정책 요청이 서버 시작 후 한 번만 | 단말기마다 처음 한 번(성공할 때까지) 요청한다 |
@@ -168,9 +170,7 @@ DB 접속 정보는 `DbConfig` 한 곳에서만 읽습니다. 실제 커넥션�
 
 프린터 상태 API(`/postPrinter`)는 /stech 버전에 없어서 뺐다. `Printer`, `PrinterResult`, `PrinterSQL` 클래스는 남아 있지만 쓰지 않는다.
 
-### 남은 문제 (확인이 필요해서 고치지 않음)
+### 남은 문제
 
-1. **주소 불일치**: 컨트롤러 주소는 `/stech/printnuri/pricepolicy` 인데 `PrintPolicyPost` 는 중계 서버의 `/jetwork/printnuri/pricepolicy` 로 보낸다. `PrintCyberPOST` 는 `/jetwork//kyocera/...` 로 보낸다. 중계 서버가 이 서버와 같은 것인지 확인이 필요하다.
-2. 카드 결제마다 `PaymentCK` 에서 1초씩 기다린다 (중복 기록 방지용으로 보여 유지).
-3. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
-4. **Xerox 결제 단말기 지정**: 복사기 에이전트와 결제 단말기의 IP 가 다르면, 결제 요청에 `terminalID` 를 넣어 보내야 정확한 단말기로 간다. 넣지 않으면 마지막으로 접속한 단말기로 보낸다 (예전 동작).
+1. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. Spring Boot 3 + Java 17 이상으로 올리는 게 좋다.
+2. **Xerox 결제 단말기 지정**: 복사기 에이전트와 결제 단말기의 IP 가 다르면, 결제 요청에 `terminalID` 를 넣어 보내야 정확한 단말기로 간다. 넣지 않으면 마지막으로 접속한 단말기로 보낸다 (예전 동작).

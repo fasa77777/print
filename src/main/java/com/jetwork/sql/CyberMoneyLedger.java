@@ -95,19 +95,35 @@ final class CyberMoneyLedger {
 		}
 	}
 
-	/** 단말기의 가맹점 ID (jw_terminal 의 3번째 컬럼). 없으면 빈 문자열. */
+	/**
+	 * 단말기의 가맹점 ID. 없으면 빈 문자열.
+	 * 예전에는 jw_terminal 의 3번째 컬럼으로 읽어서 컬럼 순서가 바뀌면 엉뚱한 값이 들어갔다.
+	 * 이제 fran_id 라는 이름의 컬럼을 찾아 읽고, 그런 컬럼이 없을 때만 3번째 컬럼을 쓴다.
+	 */
 	static String findTerminalFranId(Connection conn, String terminalID) throws SQLException {
 		try (PreparedStatement ps = conn.prepareStatement(
 				"SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = ?")) {
 			ps.setString(1, terminalID);
 			try (ResultSet rs = ps.executeQuery()) {
+				int column = franIdColumn(rs.getMetaData());
 				String franID = "";
 				while (rs.next()) {
-					franID = rs.getString(3);
+					franID = rs.getString(column);
 				}
-				return franID;
+				return franID == null ? "" : franID;
 			}
 		}
+	}
+
+	private static int franIdColumn(java.sql.ResultSetMetaData meta) throws SQLException {
+		if (meta != null) {
+			for (int i = 1; i <= meta.getColumnCount(); i++) {
+				if ("fran_id".equalsIgnoreCase(meta.getColumnName(i))) {
+					return i;
+				}
+			}
+		}
+		return 3;
 	}
 
 	/** 사이버머니 결제 내역을 jw_payment 에 남긴다. */
