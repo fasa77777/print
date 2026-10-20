@@ -22,3 +22,17 @@
 ## 이클립스 설정
 
 모든 소스 파일은 UTF-8 입니다. 한글이 깨져 보이면 Window → Preferences → General → Workspace 의 Text file encoding 을 `UTF-8` 로 바꿔 주세요.
+
+## 테스트
+
+서버를 띄운 뒤 `src/test/java/com/jetwork/test/PaymentTestClient.java` 를 우클릭 → **Run As → Java Application** 하면
+단말기 확인, 가격 정책, 사이버머니(중복 결제번호 확인 포함), 카드·티머니·캐시비·교통카드·KICC·프린트누리 결제 API 를 차례로 호출하고 통과/실패를 보여 줍니다.
+
+단말기 ID 등은 **Run Configurations → Arguments** 에 넣습니다.
+
+```
+terminalID=테스트단말기ID serial=시리얼 userCard=테스트카드 socket=true
+```
+
+실제 DB 에 기록되므로 테스트용 단말기·카드로만 실행하세요. Postman 을 쓰려면 `test-requests/JetworkServer.postman_collection.json` 을 Import 하면 됩니다.
+
