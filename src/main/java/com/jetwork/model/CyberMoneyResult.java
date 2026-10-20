@@ -37,7 +37,7 @@ public class CyberMoneyResult {
 	public PaymentResult toPaymentResult(String terminalID) {
 		PaymentResult pr = new PaymentResult();
 		pr.setTerminalID(terminalID);
-		pr.setBalance(balance);
+		pr.setBalance(String.valueOf(balance));
 		switch (status) {
 		case OK:
 			pr.setResult("OK");

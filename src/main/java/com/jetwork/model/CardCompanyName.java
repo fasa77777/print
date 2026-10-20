@@ -1,7 +1,23 @@
 package com.jetwork.model;
 
+/**
+ * KICC 단말기의 발급사 코드(R12, 3자리)를 카드사명으로 바꾼다. 코드표는 파일 아래 주석 참고.
+ */
 public class CardCompanyName {
-	
+
+	/** 카드사명을 알 수 없을 때 기록하는 이름 */
+	public static final String FOREIGN_CARD = "해외카드";
+
+	/**
+	 * 카드 결제(신용·체크)용 카드사명. 코드가 없거나 목록에 없는 코드면 "해외카드"로 돌려준다.
+	 * (국내 카드사는 모두 발급사 코드가 오므로, 이름을 못 찾는 카드는 해외 카드로 본다)
+	 */
+	public static String getCardName(String code) {
+		String name = getName(code == null ? null : code.trim());
+		return name.isEmpty() ? FOREIGN_CARD : name;
+	}
+
+	/** 발급사 코드로 카드사명을 찾는다. 모르는 코드면 빈 문자열. */
 	public static String getName(String code) {
 		String name = "";
 		
