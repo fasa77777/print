@@ -12,6 +12,8 @@ public class CyberMoneyResult {
 		INSUFFICIENT,
 		/** 같은 결제번호로 이미 처리된 결제 */
 		DUPLICATE,
+		/** jw_terminal 에 없는 단말기 ID */
+		NO_TERMINAL,
 		/** 금액 형식 오류나 DB 오류 */
 		ERROR
 	}
@@ -53,6 +55,11 @@ public class CyberMoneyResult {
 			pr.setResult("FAIL");
 			pr.setText("잔액부족 충전후 사용하세요");
 			pr.setReason("no money");
+			break;
+		case NO_TERMINAL:
+			pr.setResult("FAIL");
+			pr.setText(RecordStatus.NO_TERMINAL_TEXT);
+			pr.setReason("no terminal");
 			break;
 		case DUPLICATE:
 			pr.setResult("FAIL");

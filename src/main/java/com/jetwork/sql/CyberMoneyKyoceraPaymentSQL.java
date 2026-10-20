@@ -39,6 +39,14 @@ public class CyberMoneyKyoceraPaymentSQL {
 		try {
 			conn.setAutoCommit(false);
 
+			// 등록되지 않은 단말기의 결제는 차감·기록하지 않고 FAIL 로 응답한다. (카드도 새로 등록하지 않는다)
+			if (!CardPaymentLedger.terminalExists(conn, payment.getTerminalID())) {
+				conn.commit();
+				logger.warn("미등록 단말기의 사이버머니 결제 거절 terminalID={} card={} amount={}",
+						payment.getTerminalID(), Mask.card(card), amount);
+				return new CyberMoneyResult(Status.NO_TERMINAL, 0);
+			}
+
 			Integer balance = CyberMoneyLedger.findBalance(conn, card);
 
 			// 같은 결제번호로 이미 처리된 결제는 다시 차감하지 않는다.
