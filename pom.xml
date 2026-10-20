@@ -18,6 +18,8 @@
 
 	<properties>
 		<java.version>1.8</java.version>
+		<!-- 실행 jar 의 시작 클래스. 프로젝트에 main 메서드가 여러 개 있어도 이 클래스로 패키징한다 -->
+		<start-class>com.jetwork.bin.JetworkServerApplication</start-class>
 	</properties>
 
 	<dependencies>
