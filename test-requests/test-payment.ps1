@@ -3,7 +3,7 @@
 # 실행: PowerShell 에서
 #   powershell -ExecutionPolicy Bypass -File .\test-payment.ps1
 # 서버 주소·단말기·카드를 바꾸려면:
-#   powershell -ExecutionPolicy Bypass -File .\test-payment.ps1 -BaseUrl http://서버IP:8090/jetwork -TerminalID 0788888 -Serial 0BY8BJEH500015W -UserCard 53C797A2
+#   powershell -ExecutionPolicy Bypass -File .\test-payment.ps1 -BaseUrl http://서버IP:8090/jetwork -TerminalID 123456 -Serial erwerewrwerwer -UserCard 8E156710
 #
 # 주의: 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다.
 #       운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.
@@ -11,9 +11,9 @@
 
 param(
     [string]$BaseUrl    = "http://localhost:8090/jetwork",
-    [string]$TerminalID = "TEST0001",
-    [string]$Serial     = "TESTSERIAL0001",
-    [string]$UserCard   = "TESTCARD"
+    [string]$TerminalID = "123456",
+    [string]$Serial     = "erwerewrwerwer",
+    [string]$UserCard   = "8E156710"
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

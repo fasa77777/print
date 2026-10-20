@@ -48,7 +48,7 @@
 단말기 ID 등은 **Run Configurations → Arguments** 에 넣습니다.
 
 ```
-terminalID=테스트단말기ID serial=시리얼 userCard=테스트카드 socket=true
+terminalID=123456 serial=erwerewrwerwer userCard=8E156710 socket=true
 ```
 
 "3-1. 실제 결제 요청 형식" 은 실제 결제 에이전트가 보내는 요청(`test-requests/real-card-payment.json`: subJobData 배열, 숫자·true/false, R01~R30)을 단말기 ID·시리얼·승인번호만 바꿔서 그대로 보냅니다. 파일을 고치면 다른 형식도 시험할 수 있습니다.

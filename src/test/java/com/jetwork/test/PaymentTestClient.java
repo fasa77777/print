@@ -23,14 +23,14 @@ import java.util.regex.Pattern;
  * 실행 방법 (이클립스)
  *   이 파일 우클릭 → Run As → Java Application
  *   값을 바꾸려면 아래 "설정" 의 상수를 고치거나, Run Configurations → Arguments 에
- *     baseUrl=http://127.0.0.1:8090/jetwork terminalID=0788888 serial=0BY8BJEH500015W userCard=53C797A2
+ *     baseUrl=http://127.0.0.1:8090/jetwork terminalID=123456 serial=erwerewrwerwer userCard=8E156710
  *   처럼 넣는다. socket=true 를 넣으면 단말기 소켓(10020) 접속 테스트도 한다.
  *   (소켓 서버는 실서버 jar 처럼 기본으로 꺼져 있다. 서버를 -Dsocket.server=true 로 실행했을 때만 테스트)
  *
  * 주소·응답 형식은 실서버 jar 와 같고, 결제 기록은 버그를 고친 동작 기준이다 (docs/ARCHITECTURE.md).
  *
  * 실행 방법 (명령 프롬프트, Java 11 이상)
- *   java src\test\java\com\jetwork\test\PaymentTestClient.java terminalID=0788888 serial=...
+ *   java src\test\java\com\jetwork\test\PaymentTestClient.java terminalID=123456 serial=erwerewrwerwer userCard=8E156710
  *
  * 주의
  *   - 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감된다. 테스트용 단말기·카드로만 실행한다.
@@ -43,9 +43,9 @@ public class PaymentTestClient {
 
 	// ---------------- 설정 ----------------
 	static String baseUrl = "http://127.0.0.1:8090/jetwork";
-	static String terminalID = "TEST0001";
-	static String serial = "TESTSERIAL0001";
-	static String userCard = "TESTCARD";
+	static String terminalID = "123456";
+	static String serial = "erwerewrwerwer";
+	static String userCard = "8E156710";
 	static String socketHost = "127.0.0.1";
 	static int socketPort = 10020;
 	static boolean socketTest = false;
@@ -305,13 +305,13 @@ public class PaymentTestClient {
 
 	/** test-requests/real-card-payment.json 과 같은 내용 (파일이 없을 때) */
 	static final String REAL_PAYMENT_SAMPLE = "{\"cmd\":\"pay\",\"color\":true,\"copies\":1,\"docName\":\"[2]Untitled\",\"duplex\":false,"
-			+ "\"jobType\":\"Print\",\"mac\":\"00:00:00:00:00:00\",\"nUp\":1,\"paperSize\":\"[A4]\",\"scanCount\":1,\"serial\":\"TESTSERIAL0001\","
+			+ "\"jobType\":\"Print\",\"mac\":\"00:00:00:00:00:00\",\"nUp\":1,\"paperSize\":\"[A4]\",\"scanCount\":1,\"serial\":\"erwerewrwerwer\","
 			+ "\"subJobData\":[{\"cmd\":\"pay\",\"color\":true,\"copies\":2,\"docName\":\"Untitled\",\"duplex\":false,\"jobType\":\"Print\",\"nUp\":1,"
 			+ "\"paperSize\":\"A4\",\"scanCount\":1,\"subJobType\":\"PC\",\"totalAmount\":20,\"totalPages\":2},"
 			+ "{\"cmd\":\"pay\",\"color\":true,\"copies\":2,\"docName\":\"Untitled\",\"duplex\":false,\"jobType\":\"Print\",\"nUp\":1,"
 			+ "\"paperSize\":\"A4\",\"scanCount\":1,\"subJobType\":\"PC\",\"totalAmount\":20,\"totalPages\":2}],"
-			+ "\"subJobType\":\"PC\",\"timeOut\":70,\"totalAmount\":40,\"totalPages\":4,\"terminalID\":\"TEST0001\",\"payment_type\":\"credit_card\","
-			+ "\"S01\":\"A1\",\"S02\":\"40\",\"S03\":\"TEST0001\",\"S09\":\"00\",\"S10\":\"500\",\"S16\":\"45\",\"S23\":\"20211011105926\","
+			+ "\"subJobType\":\"PC\",\"timeOut\":70,\"totalAmount\":40,\"totalPages\":4,\"terminalID\":\"123456\",\"payment_type\":\"credit_card\","
+			+ "\"S01\":\"A1\",\"S02\":\"40\",\"S03\":\"123456\",\"S09\":\"00\",\"S10\":\"500\",\"S16\":\"45\",\"S23\":\"20211011105926\","
 			+ "\"R01\":\"P\",\"R02\":\"A\",\"R03\":\"0000\",\"R04\":\"0000\",\"R05\":\"026\",\"R06\":\"0000\",\"R07\":\"0000000000000\",\"R08\":\"\","
 			+ "\"R09\":\"00000000    \",\"R10\":\"\",\"R11\":\"Y\",\"R12\":\"026\",\"R13\":\"\",\"R14\":\"000000000   \",\"R15\":\"\",\"R16\":\"d\","
 			+ "\"R17\":\"\",\"R18\":\"00000000\",\"R19\":\"\",\"R20\":\"000000000000\",\"R21\":\"\",\"R22\":\"N\",\"R23\":\"0000-00**-****-0000\","
