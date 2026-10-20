@@ -26,8 +26,11 @@ public final class DbConfig {
 	private static final Logger logger = LoggerFactory.getLogger(DbConfig.class);
 
 	private static final String RESOURCE = "/db.properties";
+	private static final String DEFAULT_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
 	private static final String url;
+	/** JDBC 드라이버 클래스 (db.driver). 보통은 쓰지 않는다 (기본 MSSQL). 테스트 프로그램이 가짜 DB 드라이버를 쓸 때 지정한다 */
+	private static final String driver;
 	private static final String username;
 	private static final String password;
 	private static final int poolMaxActive;
@@ -62,6 +65,7 @@ public final class DbConfig {
 		}
 
 		url = pick("DB_URL", props.getProperty("db.url"));
+		driver = props.getProperty("db.driver", DEFAULT_DRIVER).trim();
 		username = pick("DB_USERNAME", props.getProperty("db.username"));
 		password = pick("DB_PASSWORD", props.getProperty("db.password"));
 		poolMaxActive = intValue(props.getProperty("db.pool.maxActive"), DEFAULT_POOL_MAX_ACTIVE);
@@ -104,6 +108,10 @@ public final class DbConfig {
 
 	public static int getPoolMinIdle() {
 		return poolMinIdle;
+	}
+
+	public static String getDriver() {
+		return driver;
 	}
 
 	public static String getUrl() {

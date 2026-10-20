@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "JetworkServer 테스트 결제 요청 (/jetwork)",
-    "description": "결제 서버 API 테스트용 요청 모음.\n\n변수(컬렉션 → Variables)\n- baseUrl: 서버 주소 (기본 http://localhost:8090/jetwork)\n- terminalID / serial: jw_terminal 에 등록된 **테스트용** 단말기\n- userCard: 테스트용 사이버머니 카드번호\n\n⚠️ 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다. 운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.\n\ncyberNo·승인번호(R09)는 {{$timestamp}} 로 매번 바뀌어서 중복으로 걸러지지 않습니다.\n\nXerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았습니다.",
+    "description": "결제 서버 API 테스트용 요청 모음.\n\n변수(컬렉션 → Variables)\n- baseUrl: 서버 주소 (기본 http://222.122.118.8:8090/jetwork)\n- terminalID / serial: jw_terminal 에 등록된 **테스트용** 단말기\n- userCard: 테스트용 사이버머니 카드번호\n\n⚠️ 실제 DB 에 결제 내역이 기록되고 사이버머니 잔액이 차감됩니다. 운영 DB 라면 테스트 단말기·카드로만 실행하고, 끝나면 jw_payment 의 테스트 기록을 지워 주세요.\n\ncyberNo·승인번호(R09)는 {{$timestamp}} 로 매번 바뀌어서 중복으로 걸러지지 않습니다.\n\nXerox 결제(/xerox/xeroxPayment)는 실제 결제 단말기가 있어야 해서 넣지 않았습니다.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -412,19 +412,19 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8090/jetwork"
+      "value": "http://222.122.118.8:8090/jetwork"
     },
     {
       "key": "terminalID",
-      "value": "TEST0001"
+      "value": "123456"
     },
     {
       "key": "serial",
-      "value": "TESTSERIAL0001"
+      "value": "erwerewrwerwer"
     },
     {
       "key": "userCard",
-      "value": "TESTCARD"
+      "value": "8E156710"
     }
   ]
 }
