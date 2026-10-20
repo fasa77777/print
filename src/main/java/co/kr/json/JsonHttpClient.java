@@ -14,8 +14,16 @@ import org.json.simple.JSONObject;
  */
 public final class JsonHttpClient {
 
-	/** 중계 서버 주소. 경로는 각 호출하는 쪽에서 붙인다. */
-	public static final String BASE_URL = "http://pay1.printnuri.com:8090/jetwork";
+	/**
+	 * 중계 서버 주소. 경로는 각 호출하는 쪽에서 붙인다.
+	 * 테스트할 때는 실행 옵션 -Drelay.baseUrl=http://127.0.0.1:9000/jetwork 처럼 바꿀 수 있다.
+	 */
+	public static final String BASE_URL = System.getProperty("relay.baseUrl", "http://pay1.printnuri.com:8090/jetwork");
+
+	/** 중계 서버 접속 제한 시간 */
+	private static final int CONNECT_TIMEOUT_MILLIS = 5000;
+	/** 중계 서버 응답 제한 시간 */
+	private static final int READ_TIMEOUT_MILLIS = 15000;
 
 	private JsonHttpClient() {
 	}
@@ -33,6 +41,9 @@ public final class JsonHttpClient {
 		con.setRequestProperty("Content-Type", "application/json");
 		con.setRequestProperty("Accept", "application/json");
 		con.setRequestMethod("POST");
+		// 중계 서버가 응답하지 않으면 소켓 작업 스레드가 묶여 다른 단말기 전문까지 밀리므로 시간을 제한한다.
+		con.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
+		con.setReadTimeout(READ_TIMEOUT_MILLIS);
 
 		OutputStreamWriter wr = new OutputStreamWriter(con.getOutputStream());
 		wr.write(body.toString());
