@@ -99,7 +99,8 @@ public class DBCPConnectionMgr {
 			return null;
 		}
 		try {
-			return dataSource.getConnection();
+			Connection c = dataSource.getConnection();
+			return SqlTrace.enabled() ? SqlTrace.wrap(c) : c;
 		} catch (SQLException ex) {
 			logger.warn("[DB] 커넥션을 가져오지 못했습니다: {} ({})", ex.getMessage(), poolStatus());
 			return null;

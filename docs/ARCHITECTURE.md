@@ -23,6 +23,8 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `co.kr.json` | 중계 서버로 보내는 JSON (JsonHttpClient 공통) |
 | `co.kr.up.util` | 바이트·16진수 변환, 카드번호 가리기(Mask) |
 
+전체 로그용: `com.jetwork.bin.TraceFilter`(HTTP 요청·응답), `com.jetwork.sql.SqlTrace`(SQL). 9장 참고.
+
 실서버 jar 에 있던 쓰지 않는 클래스(`com.jetwork.controller.*`, `PostAPIController`, `Blog`, `DbTest`, `DBConnectionManager`, `UserSQL`, `TerminalLicenseSQL`, `PostServer` 등)는 뺐습니다. jar 에서도 Spring 이 찾지 못하거나 아무도 부르지 않던 클래스입니다.
 
 ## 3. HTTP API (주소 앞에 `/jetwork`, 실서버 jar 와 같음)
@@ -130,7 +132,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 
 | 항목 | 내용 |
 |---|---|
-| `src/main/resources/application.properties` | 포트 8090, 로그 파일(`logs/jetwork.log`, 10MB·30일·1GB) |
+| `src/main/resources/application.properties` | 포트 8090, 로그 파일(`logs/jetwork.log`, 10MB·30일·1GB), 전체 로그 스위치(기본 꺼짐, 9장) |
 | `db.properties` (jar 와 같은 폴더) 또는 `-Ddb.config=경로` | **운영 서버 권장.** jar 안의 값보다 우선. jar 에 비밀번호가 들어가지 않는다 |
 | `src/main/resources/db.properties` | **Git 에 올리지 않음.** 이클립스에서 실행할 때 쓰기 좋음. `db.properties.example` 을 복사해서 `db.url`, `db.username`, `db.password` 를 채운다. 풀 크기 `db.pool.maxActive` / `db.pool.minIdle` (기본 200 / 10) |
 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 db.properties 보다 우선 |
@@ -138,7 +140,31 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | 실행 옵션 `-Dsocket.server=true` | 결제 단말기 소켓 서버(10020) 시작. 기본은 꺼짐 (jar 와 같음) |
 | 실행 옵션 `-Drelay.baseUrl=...` | 소켓 서버가 결과를 보내는 중계 서버 주소 (기본 `http://pay1.printnuri.com:8090/jetwork`) |
 
-## 9. 남은 문제
+## 9. 전체 로그 (기본 꺼짐)
+
+켜는 방법: `--logging.level.jetwork-all=debug` (실행 옵션) 또는 application.properties 의 `#logging.level.jetwork-all=debug` 주석 해제.
+HTTP 만 보려면 `logging.level.jetwork.trace.http=debug`, SQL 만 보려면 `logging.level.jetwork.trace.sql=debug`.
+
+| 로거 | 남기는 것 |
+|---|---|
+| `jetwork.trace.http` (TraceFilter) | 요청 시작(메서드·주소·보낸 IP), 요청 본문, 응답 코드·걸린 시간·응답 본문 (본문은 8000바이트까지) |
+| `jetwork.trace.sql` (SqlTrace) | SQL 한 줄 + 넣은 값, 조회 행 수 또는 바뀐 행 수, 걸린 시간, 실패 시 오류, commit/rollback |
+| `com.jetwork`, `com.stech`, `co.kr` | 기존 DEBUG 로그 (소켓 전문, 중계 서버 요청·응답 등) |
+
+- 요청마다 번호(`#n`)를 붙이고, 같은 요청에서 나온 SQL 줄에도 같은 번호가 붙는다 (`logging.pattern.level=%5p %X{req}`).
+- 요청 본문은 컨트롤러가 다 읽은 뒤에 남기므로, 그 요청의 SQL 줄 다음에 찍힌다.
+- 카드번호: 본문의 `userCard`·`cardNumber`·`cardNo` 값, SQL 의 `cardNumber`·`userCard` 컬럼 값은 앞 4·뒤 4자리만 남긴다.
+- 꺼져 있으면 필터는 바로 넘기고 커넥션도 감싸지 않아 성능 영향이 없다.
+- 예시:
+  ```
+  DEBUG #9 ... jetwork.trace.http : 요청 시작 POST /jetwork/postCyberMoney from 127.0.0.1
+  DEBUG #9 ... jetwork.trace.sql  : SELECT cyberMoney FROM [dbo].[cybermoney] WHERE [cardNumber] = ? | 값: [1]=1234********5678 → 1행 (0.5ms)
+  DEBUG #9 ... jetwork.trace.sql  : commit (0.0ms)
+  DEBUG #9 ... jetwork.trace.http : 요청 본문: {"userID":"T1","userCard":"1234********5678"}
+  DEBUG #9 ... jetwork.trace.http : 응답 200 (6ms): {"userID":"T1",...,"money":"1000","result":"OK"}
+  ```
+
+## 10. 남은 문제
 
 1. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. 운영 서버의 Java 버전을 확인한 뒤 올리는 게 좋다.
 2. 소켓 서버를 켜고 Xerox 결제를 쓸 때, 복사기 에이전트와 결제 단말기의 IP 가 다르면 결제 요청에 `terminalID` 를 넣어야 정확한 단말기로 간다.
