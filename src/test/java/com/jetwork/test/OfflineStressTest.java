@@ -25,7 +25,8 @@ import com.jetwork.test.fake.FakeDbDriver;
  *   2. 결제 기록 부하   : 동시 200, 5,000건 (승인번호 모두 다름)          → 5,000건 모두 기록
  *   3. 같은 승인번호 경합: 동시 100, 같은 승인번호 100건                  → 1건만 기록
  *   4. 사이버머니 경합  : 잔액 30,000원 카드에 동시 200, 100원 400건      → 300건 성공·100건 잔액 부족·잔액 0원
- *   5. 같은 결제번호 경합: 동시 50, 같은 cyberNo 50건                     → 1번만 차감
+ *   5. 같은 결제번호 연속 결제: 잔액 1,000원 카드에 같은 cyberNo 100원 50건 동시 → 10건 성공·잔액 0원 (음수 안 됨)
+ *      같은 카드로 1초 안에 차례로 5건                                → 5건 모두 성공
  *   6. DB 장애          : 부하 중 3초 동안 DB 끊김                       → 끊긴 동안만 실패, 복구 후 재시작 없이 정상
  *   7. 자원             : 커넥션 최대 200 이하, 끝난 뒤 사용 중 커넥션 0, 스레드·파일(소켓) 수가 늘지 않음
  *
@@ -106,14 +107,34 @@ public class OfflineStressTest {
 		check("남은 잔액 0원, 음수 아님 (실제 " + bal + ")", "0".equals(bal));
 		check("결제 기록 300건 (실제 " + (payments() - before) + ")", payments() - before == 300);
 
-		// 5. 같은 결제번호 경합
-		section("5. 같은 cyberNo 동시 요청 (잔액 1,000원, 100원 × 50건)");
+		// 5. 같은 결제번호 연속 결제 (매장 에이전트는 결제번호를 초 단위로 만들어 1초 안의 연속 결제는 번호가 같다)
+		section("5. 같은 cyberNo 연속 결제 동시 50건 (잔액 1,000원, 100원씩)");
 		FakeDbDriver.addRow("cybermoney", "cardNumber", "SC2", "cyberMoney", "1000", "fran_id", "F1");
+		final AtomicInteger okSame = new AtomicInteger(), noMoneySame = new AtomicInteger();
 		before = payments();
-		r = keep(StressTest.run("같은 cyberNo 50건 (동시 50)", 50, 50, StressTest.fixed("/postCyberMoneyPayment", cyber("SC2", "100", "DUP0001"))));
+		r = keep(StressTest.run("같은 cyberNo 50건 (동시 50)", 50, 50, StressTest.fixed("/postCyberMoneyPayment", cyber("SC2", "100", "20261021134500")),
+				new StressTest.Check() {
+					public boolean ok(int st, String body) {
+						if (body.contains("\"reason\":\"ok\"")) okSame.incrementAndGet();
+						else if (body.contains("\"reason\":\"no money\"")) noMoneySame.incrementAndGet();
+						return st == 200 && (body.contains("\"reason\":\"ok\"") || body.contains("\"reason\":\"no money\""));
+					}
+				}));
 		bal = balance("SC2");
-		check("1번만 차감: 잔액 900원 (실제 " + bal + ")", "900".equals(bal));
-		check("결제 기록 1건 (실제 " + (payments() - before) + ")", payments() - before == 1);
+		check("잔액만큼 10건 성공·40건 잔액 부족 (실제 " + okSame.get() + "·" + noMoneySame.get() + ")", okSame.get() == 10 && noMoneySame.get() == 40);
+		check("잔액 0원, 음수 아님 (실제 " + bal + ")", "0".equals(bal));
+		check("결제 기록 10건 = 차감 10번 (실제 " + (payments() - before) + ")", payments() - before == 10);
+
+		// 5-1. 같은 카드 연속 결제 (차례로 빠르게)
+		section("5-1. 같은 카드로 1초 안에 연속 결제 5건 (한 건씩 차례로)");
+		FakeDbDriver.addRow("cybermoney", "cardNumber", "SC3", "cyberMoney", "500", "fran_id", "F1");
+		int ok5 = 0;
+		for (int i = 0; i < 5; i++) {
+			OfflineTest.base = StressTest.baseUrl;
+			Map<String, String> m = OfflineTest.postRaw("/postCyberMoneyPayment", cyber("SC3", "100", "20261021134501"));
+			if ("ok".equals(m.get("reason"))) ok5++;
+		}
+		check("5건 모두 성공, 잔액 0원 (실제 " + ok5 + "건, 잔액 " + balance("SC3") + ")", ok5 == 5 && "0".equals(balance("SC3")));
 
 		// 6. DB 장애
 		section("6. 부하 중 DB 장애 3초");

@@ -146,12 +146,15 @@ public class OfflineTest {
 				&& "홍대점".equals(p.get("payment_cardName")) && "N1".equals(p.get("payment_ok")));
 		check("단말기 last_dt 갱신", "<now>".equals(FakeDbDriver.find("jw_terminal", "terminal_id", "T1").get("last_dt")));
 
+		// 연속 결제: 매장 에이전트는 결제번호로 초 단위 시각을 보내므로 1초 안의 연속 결제는 번호가 같다
 		r = cyber("/postCyberMoneyPayment", "C1", "300", "N1", "false");
-		check("같은 결제번호 다시 → FAIL duplicate, 차감 없음", "duplicate".equals(r.get("reason")) && "700".equals(balance("C1")));
+		int sameNo = 0;
+		for (Map<String, String> row : FakeDbDriver.rows("jw_payment")) if ("N1".equals(row.get("cyberNo"))) sameNo++;
+		check("같은 결제번호 연속 결제 → OK, 잔액 400, 결제 기록 2건", "OK".equals(r.get("result")) && "400".equals(balance("C1")) && sameNo == 2);
 		r = cyber("/postCyberMoneyPayment", "C2", "100", "N2", "false");
 		check("잔액 100원에 100원 결제 → OK, 잔액 0", "OK".equals(r.get("result")) && "0".equals(balance("C2")));
 		r = cyber("/postCyberMoneyPayment", "C1", "5000", "N3", "false");
-		check("잔액 부족 → FAIL no money, balance -4300, 차감 없음", "no money".equals(r.get("reason")) && "-4300".equals(r.get("balance")) && "700".equals(balance("C1")));
+		check("잔액 부족 → FAIL no money, balance -4600, 차감 없음", "no money".equals(r.get("reason")) && "-4600".equals(r.get("balance")) && "400".equals(balance("C1")));
 		r = cyber("/postCyberMoneyPayment", "C8", "100", "N4", "false");
 		check("미등록 카드 → FAIL no card, 0원 등록", "no card".equals(r.get("reason")) && "0".equals(balance("C8")));
 		r = cyber("/postCyberMoneyPayment", "", "100", "N5", "false");
@@ -160,7 +163,7 @@ public class OfflineTest {
 		check("금액이 숫자가 아님 → FAIL error", "error".equals(r.get("reason")));
 
 		r = cyber("/kyocera/postCyberMoneyPayment", "C1", "200", "K1", "1");
-		check("교세라 200원 → OK, 잔액 500", "OK".equals(r.get("result")) && "500".equals(balance("C1")));
+		check("교세라 200원 → OK, 잔액 200", "OK".equals(r.get("result")) && "200".equals(balance("C1")));
 		p = FakeDbDriver.find("jw_payment", "cyberNo", "K1");
 		check("교세라 컬러 1 → true 로 기록", p != null && "true".equals(p.get("payment_colorYN")));
 
@@ -281,9 +284,11 @@ public class OfflineTest {
 			// 금액 오류
 			check("Xerox 금액 abc → NO", "NO".equals(postXerox("abc")));
 		} finally {
+			terminal.onCharge = null;
 			terminal.close();
 			ex.shutdownNow();
 		}
+		Thread.sleep(1000); // 앞 시나리오의 가짜 단말기 응답(0.3초 뒤 전송)이 다 끝난 뒤에 확인
 		// 단말기가 응답하지 않으면 5초 안에 NO
 		long t0 = System.currentTimeMillis();
 		String r = postXerox("700");
