@@ -169,42 +169,30 @@ public class DBCPConnectionMgr {
 		return sb.toString();
 	}
 
+    /*
+     * 아래 반납 메서드들은 ResultSet·Statement 를 닫다가 오류가 나도 커넥션은 반드시 풀로 돌려준다.
+     * (예전에는 rs.close() 에서 오류가 나면 커넥션 반납을 건너뛰어 풀에서 커넥션이 하나씩 사라질 수 있었다)
+     */
     public void freeConnection(Connection con, PreparedStatement pstmt, ResultSet rs) {
-        try {
-            if (rs != null) rs.close();
-            if (pstmt != null) pstmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
+        freeConnection(rs);
+        freeConnection(pstmt);
+        freeConnection(con);
     }
     public void freeConnection(Connection con, Statement stmt, ResultSet rs) {
-        try {
-            if (rs != null) rs.close();
-            if (stmt != null) stmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
+        freeConnection(rs);
+        freeConnection(stmt);
+        freeConnection(con);
     }
-   
+
     public void freeConnection(Connection con, PreparedStatement pstmt) {
-        try {
-            if (pstmt != null) pstmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }   
-    public void freeConnection(Connection con, Statement stmt) {
-        try {
-            if (stmt != null) stmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
+        freeConnection(pstmt);
+        freeConnection(con);
     }
-   
+    public void freeConnection(Connection con, Statement stmt) {
+        freeConnection(stmt);
+        freeConnection(con);
+    }
+
     public void freeConnection(Connection con) {
         try {
             if (con != null) con.close();

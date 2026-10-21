@@ -51,6 +51,14 @@
 가짜 DB(쿼리마다 3ms)에 서버를 붙여 동시 100~200 요청으로 읽기 10,000건·결제 5,000건, 같은 승인번호 동시 요청·같은 결제번호 연속 결제·같은 카드 동시 결제,
 부하 중 DB 3초 장애와 복구, 커넥션·스레드·소켓 누수를 확인합니다. 끝나면 `통과 19  실패 0`.
 
+### 1-1-1. 메모리 누수 테스트 (MemorySoakTest, 3~5분)
+
+`MemorySoakTest.java` 우클릭 → **Run As → Java Application** (VM arguments 에 `-Xmx256m` 권장)
+
+가짜 DB 로 서버를 띄워 단말기 확인·가격 조회·잔액 조회·카드 결제·사이버머니 결제를 섞어 2만 건씩 12회(24만 건) 보내고,
+회차마다 GC 후 남은 힙·스레드·열린 파일·DB 커넥션을 표로 찍습니다. 뒤 회차 동안 계속 늘지 않으면 `결과: 누수 없음`.
+Program arguments 에 `12 20000 trace` 처럼 `trace` 를 붙이면 전체 로그를 켠 상태로 시험합니다.
+
 ### 1-2. 실제 DB 연결·부하 테스트 (DbStressTest, 읽기 전용)
 
 `db.properties` 에 실제 DB 접속 정보를 넣고 `DbStressTest.java` 우클릭 → **Run As → Java Application**

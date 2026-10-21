@@ -50,7 +50,7 @@ public class TraceFilter extends OncePerRequestFilter {
 		}
 		String id = "#" + SEQ.incrementAndGet();
 		MDC.put("req", id);
-		ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+		ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY); // 본문은 MAX_BODY 까지만 메모리에 담는다
 		ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
 		long t0 = System.nanoTime();
 		log.debug("요청 시작 {} {} from {}", request.getMethod(), uri(request), request.getRemoteAddr());
@@ -77,7 +77,7 @@ public class TraceFilter extends OncePerRequestFilter {
 		}
 		String s = new String(b, 0, Math.min(b.length, MAX_BODY), StandardCharsets.UTF_8).replaceAll("[\\r\\n]+", " ");
 		s = mask(s);
-		return b.length > MAX_BODY ? s + " …(" + b.length + "바이트 중 앞부분)" : s;
+		return b.length >= MAX_BODY ? s + " …(앞 " + MAX_BODY + "바이트만)" : s;
 	}
 
 	static String mask(String json) {

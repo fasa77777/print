@@ -101,6 +101,11 @@ public class FakeDbDriver implements Driver {
 		TABLES.get(t).add(r);
 	}
 
+	/** 표를 비운다 (메모리 시험에서 가짜 DB 자체가 커지지 않게) */
+	public static synchronized void clear(String table) {
+		TABLES.put(table, new ArrayList<Map<String, String>>());
+	}
+
 	/** 표의 행 복사본 */
 	public static synchronized List<Map<String, String>> rows(String table) {
 		List<Map<String, String>> out = new ArrayList<Map<String, String>>();
