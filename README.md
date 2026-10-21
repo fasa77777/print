@@ -13,6 +13,10 @@
    이 파일은 `.gitignore` 에 들어 있어서 GitHub 에 올라가지 않습니다.
    운영 서버에서는 jar 와 같은 폴더에 `db.properties` 를 두면 jar 안의 값보다 먼저 읽습니다 (jar 에 비밀번호를 넣지 않아도 됩니다). 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 가 있으면 그것이 가장 우선입니다.
    로그는 실행한 폴더의 `logs/jetwork.log` 에 남습니다 (10MB 마다 새 파일, 30일·1GB 까지 보관).
+   처리 과정을 모두 보려면 **전체 로그**를 켭니다: `java -jar JetworkServer-0.0.10-SNAPSHOT.jar --logging.level.jetwork-all=debug`
+   (또는 `application.properties` 의 `#logging.level.jetwork-all=debug` 에서 `#` 를 지우고 재시작).
+   HTTP 요청·응답 본문과 걸린 시간, 모든 SQL 과 넣은 값·결과 행 수·걸린 시간, commit/rollback, 소켓·중계 상세가 남고,
+   같은 요청의 줄에는 같은 요청 번호(`#12` 등)가 붙습니다. 카드번호는 가려집니다. 로그가 많아지므로 문제를 볼 때만 켭니다.
 
 2. 실행합니다.
    - 이클립스: `JetworkServerApplication` 우클릭 → Run As → Java Application (또는 Spring Boot App)
