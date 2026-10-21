@@ -45,7 +45,7 @@ public class PaperPriceSQL {
 			TerminalInfoSQL.updateVersions(conn, terminal.getTerminalID(), terminal.getAgentVersion(), terminal.getVersion());
 			conn.commit();
 		} catch (Exception e) {
-			logger.error("PaperPriceSQL 처리 중 오류", e);
+			DbLog.error(logger, "PaperPriceSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);

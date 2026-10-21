@@ -36,6 +36,13 @@ public class CyberMoneyKyoceraPaymentSQL {
 			return new CyberMoneyResult(Status.NO_CARD, 0);
 		}
 
+		// 같은 카드의 결제는 이 서버 안에서 차례로 처리한다 (연속 결제가 동시에 와도 잔액을 하나씩 확인·차감·기록).
+		synchronized (CyberMoneyLedger.cardLock(card)) {
+			return pay(payment, card, amount);
+		}
+	}
+
+	private CyberMoneyResult pay(PaymentKyocera payment, String card, int amount) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
@@ -46,10 +53,11 @@ public class CyberMoneyKyoceraPaymentSQL {
 
 			Integer balance = CyberMoneyLedger.findBalance(conn, card);
 
-			// 같은 결제번호로 이미 처리된 결제는 다시 차감하지 않는다.
+			// 같은 카드·결제번호(cyberNo)가 이미 있어도 거절하지 않는다 (연속 결제).
+			// 매장 에이전트는 결제번호로 초 단위 시각(yyyyMMddHHmmss)을 보내서, 같은 카드로 1초 안에 연속 결제하면 번호가 같다.
+			// 예전(실서버 jar 포함)에는 두 번째 결제를 거절해서 정상 결제가 실패했다. 기록만 남겨 둔다.
 			if (CyberMoneyLedger.isDuplicate(conn, card, payment.getCyberNo())) {
-				conn.commit();
-				return new CyberMoneyResult(Status.DUPLICATE, 0); // 응답 balance 는 실서버 jar 와 같이 0
+				logger.info("같은 카드·결제번호 연속 결제 card={} cyberNo={} amount={}", Mask.card(card), payment.getCyberNo(), amount);
 			}
 
 			if (balance == null) {
@@ -83,7 +91,7 @@ public class CyberMoneyKyoceraPaymentSQL {
 			logger.info("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
 			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
 		} catch (Exception e) {
-			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CyberMoneyKyoceraPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return new CyberMoneyResult(Status.ERROR, 0);
 		} finally {
@@ -102,7 +110,7 @@ public class CyberMoneyKyoceraPaymentSQL {
 			Integer balance = CyberMoneyLedger.findBalance(conn, card);
 			return balance == null ? "" : String.valueOf(balance);
 		} catch (Exception e) {
-			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CyberMoneyKyoceraPaymentSQL", e);
 			return "";
 		} finally {
 			dbcp.freeConnection(conn);

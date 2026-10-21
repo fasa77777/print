@@ -138,7 +138,7 @@
                 }
               }
             },
-            "description": "잔액이 금액 이상이면 차감 후 OK. 잔액 부족 FAIL(no money), 미등록 카드 FAIL(no card), 같은 cyberNo 재요청 FAIL(duplicate). ⚠️ 실제 잔액이 차감된다."
+            "description": "잔액이 금액 이상이면 차감 후 OK. 잔액 부족 FAIL(no money), 미등록 카드 FAIL(no card), 같은 cyberNo 로 다시 보내도 연속 결제로 보고 결제됨. ⚠️ 실제 잔액이 차감된다."
           },
           "response": []
         },

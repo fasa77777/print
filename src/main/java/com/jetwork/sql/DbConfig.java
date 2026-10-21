@@ -50,7 +50,7 @@ public final class DbConfig {
 				logger.info("[DbConfig] jar 안의 db.properties 를 읽었습니다");
 			}
 		} catch (IOException e) {
-			logger.error("DbConfig 처리 중 오류", e);
+			DbLog.error(logger, "DbConfig", e);
 		}
 		// 2) jar 밖의 db.properties (실행한 폴더, 또는 -Ddb.config=경로). 있으면 1) 의 값을 덮어쓴다.
 		//    운영 서버에서는 jar 에 비밀번호를 넣지 않고 jar 옆에 이 파일을 두는 것을 권장한다.

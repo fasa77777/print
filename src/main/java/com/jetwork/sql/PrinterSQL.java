@@ -73,7 +73,7 @@ public class PrinterSQL {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			logger.error("PrinterSQL 처리 중 오류", e);
+			DbLog.error(logger, "PrinterSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 		} finally {
 			dbcp.freeConnection(conn);

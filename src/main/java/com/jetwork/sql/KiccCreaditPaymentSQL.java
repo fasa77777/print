@@ -47,7 +47,7 @@ public class KiccCreaditPaymentSQL {
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
-			logger.error("KiccCreaditPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "KiccCreaditPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return RecordStatus.ERROR;
 		} finally {

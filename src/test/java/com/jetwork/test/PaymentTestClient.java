@@ -110,11 +110,12 @@ public class PaymentTestClient {
 			System.out.println("   ※ 결제 실패 사유: " + r.get("reason") + " (no money = 잔액 부족, no card = 미등록 카드)");
 		}
 
-		r = post("같은 결제번호로 다시 결제 → 차감 없이 FAIL(duplicate)", "/postCyberMoneyPayment", pay);
+		// 연속 결제: 매장 에이전트는 결제번호를 초 단위 시각으로 만들어 1초 안의 연속 결제는 번호가 같다 → 둘 다 결제되어야 함
+		r = post("같은 결제번호로 연속 결제 → 이것도 결제됨 (잔액 100원 더 차감)", "/postCyberMoneyPayment", pay);
 		if (firstOk) {
-			expect(r, "reason", "duplicate");
+			expectIn(r, "reason", "ok", "no money");
 		} else {
-			System.out.println("   (첫 결제가 실패해서 중복 확인은 건너뜀)");
+			System.out.println("   (첫 결제가 실패해서 연속 결제 확인은 건너뜀)");
 		}
 
 		r = post("교세라 사이버머니 결제 100원", "/kyocera/postCyberMoneyPayment", json(

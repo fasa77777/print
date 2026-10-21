@@ -174,7 +174,7 @@ public class DBCPConnectionMgr {
             if (pstmt != null) pstmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
     public void freeConnection(Connection con, Statement stmt, ResultSet rs) {
@@ -183,7 +183,7 @@ public class DBCPConnectionMgr {
             if (stmt != null) stmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
    
@@ -192,7 +192,7 @@ public class DBCPConnectionMgr {
             if (pstmt != null) pstmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }   
     public void freeConnection(Connection con, Statement stmt) {
@@ -200,7 +200,7 @@ public class DBCPConnectionMgr {
             if (stmt != null) stmt.close();
             freeConnection(con);
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
    
@@ -208,7 +208,7 @@ public class DBCPConnectionMgr {
         try {
             if (con != null) con.close();
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
    
@@ -216,7 +216,7 @@ public class DBCPConnectionMgr {
         try {
             if (stmt != null) stmt.close();
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
    
@@ -224,14 +224,14 @@ public class DBCPConnectionMgr {
         try {
             if (pstmt != null) pstmt.close();
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }
     public void freeConnection(ResultSet rs) {
         try {
             if (rs != null) rs.close();
         } catch (SQLException e) {
-            logger.error("DBCPConnectionMgr 처리 중 오류", e);
+            DbLog.error(logger, "DBCPConnectionMgr", e);
         }
     }   
    

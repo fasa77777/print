@@ -46,7 +46,7 @@ Send-Test "가격 정책 조회" "/printnuri/pricepolicy" @{ terminalID = $Termi
 Send-Test "사이버머니 잔액 조회" "/postCyberMoney" @{ userID = $TerminalID; userCard = $UserCard }
 $no = New-No
 Send-Test "사이버머니 결제 100원" "/postCyberMoneyPayment" (With @{ userCard = $UserCard; cyberNo = $no; R09 = $no })
-Send-Test "같은 결제번호로 다시 결제 (duplicate 로 거절되어야 함)" "/postCyberMoneyPayment" (With @{ userCard = $UserCard; cyberNo = $no; R09 = $no })
+Send-Test "같은 결제번호로 연속 결제 (이것도 결제됨)" "/postCyberMoneyPayment" (With @{ userCard = $UserCard; cyberNo = $no; R09 = $no })
 Send-Test "교세라 사이버머니 결제 100원" "/kyocera/postCyberMoneyPayment" (With @{ userCard = $UserCard; cyberNo = (New-No); color = "2" })
 
 # 3. 카드·교통카드 결제 기록 (응답은 항상 OK, 결과는 jw_payment 에서 확인)

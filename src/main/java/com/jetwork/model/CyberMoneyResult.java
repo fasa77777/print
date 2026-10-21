@@ -13,7 +13,7 @@ public class CyberMoneyResult {
 		NO_CARD,
 		/** 잔액 부족 */
 		INSUFFICIENT,
-		/** 같은 카드·결제번호(cyberNo)로 이미 처리된 결제 */
+		/** 같은 카드·결제번호(cyberNo)로 이미 처리된 결제. 지금은 쓰지 않음 (연속 결제를 허용하므로) */
 		DUPLICATE,
 		/** 금액 형식 오류나 DB 오류 */
 		ERROR
