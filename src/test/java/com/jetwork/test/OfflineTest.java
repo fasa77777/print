@@ -115,6 +115,11 @@ public class OfflineTest {
 		r = post("/printnuri/pricepolicy", "terminalID", "T1", "agentVersion", "A2", "version", "V2");
 		check("가격 정책 → 컬러 200 / 흑백 100", "OK".equals(r.get("result")) && "200".equals(r.get("a4color")) && "100".equals(r.get("a4mono")));
 		check("가격 정책 요청 때 terminalVersion=V2 갱신", "V2".equals(FakeDbDriver.find("jw_terminal", "terminal_id", "T1").get("terminalVersion")));
+		r = post("/printnuri/pricepolicy", "terminalID", "T9", "agentVersion", "PRT_1.11.01");
+		check("가격 정보 없는 단말기 T9 → 컬러 60 / 흑백 60", "OK".equals(r.get("result")) && "60".equals(r.get("a4color")) && "60".equals(r.get("a4mono")));
+		FakeDbDriver.addRow("jw_paper", "terminalID", "T2", "paper_colorYN", "Y", "paper_price", " 300 ", "paper_size", "A4");
+		r = post("/printnuri/pricepolicy", "terminalID", "T2", "agentVersion", "PRT_1.11.01");
+		check("컬러 가격만 있는 단말기 T2 → 컬러 300 (공백 제거) / 흑백 60", "300".equals(r.get("a4color")) && "60".equals(r.get("a4mono")));
 
 		section("2. 사이버머니");
 		eq("잔액 조회 C1 → 1000", post("/postCyberMoney", "userID", "T1", "userCard", "C1"), "money", "1000");
