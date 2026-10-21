@@ -19,6 +19,18 @@ final class CyberMoneyLedger {
 	private CyberMoneyLedger() {
 	}
 
+	/** 카드별 잠금. 카드번호를 해시해서 256개 잠금 중 하나를 쓴다 (메모리가 늘지 않게) */
+	private static final Object[] CARD_LOCKS = new Object[256];
+	static {
+		for (int i = 0; i < CARD_LOCKS.length; i++) {
+			CARD_LOCKS[i] = new Object();
+		}
+	}
+
+	static Object cardLock(String card) {
+		return CARD_LOCKS[(card.trim().hashCode() & 0x7fffffff) % CARD_LOCKS.length];
+	}
+
 	/** 카드의 현재 잔액. 등록되지 않은 카드면 null. */
 	static Integer findBalance(Connection conn, String card) throws SQLException {
 		try (PreparedStatement ps = conn.prepareStatement(
@@ -172,7 +184,8 @@ final class CyberMoneyLedger {
 		try {
 			conn.rollback();
 		} catch (SQLException e) {
-			logger.error("CyberMoneyLedger 처리 중 오류", e);
+			// DB 가 끊긴 상태면 rollback 도 실패한다. 원래 오류는 호출한 쪽에서 이미 로그를 남기므로 여기서는 debug 로만 남긴다
+			logger.debug("rollback 실패: {}", e.toString());
 		}
 	}
 }

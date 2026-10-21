@@ -94,7 +94,7 @@ public class CreaditPaymentSQL {
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
-			logger.error("CreaditPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CreaditPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return RecordStatus.ERROR;
 		} finally {
@@ -118,7 +118,7 @@ public class CreaditPaymentSQL {
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
-			logger.error("CreaditPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CreaditPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return RecordStatus.ERROR;
 		} finally {

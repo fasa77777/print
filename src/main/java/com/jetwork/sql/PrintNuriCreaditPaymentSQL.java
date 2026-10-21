@@ -46,7 +46,7 @@ public class PrintNuriCreaditPaymentSQL {
 			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
 			return RecordStatus.OK;
 		} catch (Exception e) {
-			logger.error("PrintNuriCreaditPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "PrintNuriCreaditPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return RecordStatus.ERROR;
 		} finally {

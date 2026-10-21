@@ -36,6 +36,15 @@ public class CyberMoneyKyoceraPaymentSQL {
 			return new CyberMoneyResult(Status.NO_CARD, 0);
 		}
 
+		// 같은 카드의 결제는 이 서버 안에서 차례로 처리한다.
+		// "같은 결제번호(cyberNo)로 이미 처리됐는지 확인 → 차감 → 기록" 사이에 같은 요청이 동시에 들어오면
+		// 둘 다 "처리 안 됨"으로 보고 두 번 차감했다 (스트레스 테스트: 같은 cyberNo 50건 동시 → 10번 차감).
+		synchronized (CyberMoneyLedger.cardLock(card)) {
+			return pay(payment, card, amount);
+		}
+	}
+
+	private CyberMoneyResult pay(PaymentKyocera payment, String card, int amount) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
@@ -83,7 +92,7 @@ public class CyberMoneyKyoceraPaymentSQL {
 			logger.info("사이버머니 결제 완료 card=" + Mask.card(card) + " amount=" + amount + " balance=" + after);
 			return new CyberMoneyResult(Status.OK, after == null ? 0 : after);
 		} catch (Exception e) {
-			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CyberMoneyKyoceraPaymentSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return new CyberMoneyResult(Status.ERROR, 0);
 		} finally {
@@ -102,7 +111,7 @@ public class CyberMoneyKyoceraPaymentSQL {
 			Integer balance = CyberMoneyLedger.findBalance(conn, card);
 			return balance == null ? "" : String.valueOf(balance);
 		} catch (Exception e) {
-			logger.error("CyberMoneyKyoceraPaymentSQL 처리 중 오류", e);
+			DbLog.error(logger, "CyberMoneyKyoceraPaymentSQL", e);
 			return "";
 		} finally {
 			dbcp.freeConnection(conn);

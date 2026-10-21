@@ -40,6 +40,27 @@
 끝나면 콘솔에 `통과 55  실패 0` 처럼 나옵니다. 실패가 있으면 맨 아래에 실패한 항목이 다시 나옵니다.
 같은 PC 에서 실제 서버나 결제 단말기 프로그램이 10020·10000 포트를 쓰고 있으면 소켓 테스트는 건너뜁니다.
 
+### 1-1. DB 없이 스트레스 테스트 (OfflineStressTest, 1~2분)
+
+`src/test/java/com/jetwork/test/OfflineStressTest.java` 우클릭 → **Run As → Java Application**
+
+가짜 DB(쿼리마다 3ms)에 서버를 붙여 동시 100~200 요청으로 읽기 10,000건·결제 5,000건, 같은 승인번호·같은 결제번호·같은 카드 동시 결제,
+부하 중 DB 3초 장애와 복구, 커넥션·스레드·소켓 누수를 확인합니다. 끝나면 `통과 17  실패 0`.
+
+### 1-2. 실제 DB 연결·부하 테스트 (DbStressTest, 읽기 전용)
+
+`db.properties` 에 실제 DB 접속 정보를 넣고 `DbStressTest.java` 우클릭 → **Run As → Java Application**
+
+접속 시간, SQL Server 버전, 표 6개, 테스트 단말기(123456)·카드(8E156710) 데이터, 서버가 쓰는 쿼리별 응답 시간,
+동시 50 × 2,000건 부하, 커넥션 반납을 확인합니다. **SELECT 만 하고 DB 에 아무것도 쓰지 않습니다.**
+쿼리 하나가 평균 100ms 를 넘으면 "인덱스 확인 필요" 로 표시합니다. 바꾸기: `threads=100 requests=5000`
+
+### 1-3. 실제 서버 부하 테스트 (StressTest)
+
+`StressTest.java` 우클릭 → **Run As → Java Application** — 기본 서버 222.122.118.8, 동시 50 × 2,000건씩
+단말기 확인·가격 조회·잔액 조회·섞어서 의 처리량과 응답 시간(50/95/99%)을 잽니다.
+`write=true` 를 넣으면 카드 결제 기록도 requests 건 넣고, 끝나면 지우는 SQL 을 출력합니다. **운영 서버에서는 사람이 적은 시간에 돌리세요.**
+
 ### 2. 실제 서버·DB 로 확인 (PaymentTestClient)
 
 서버를 띄운 뒤 `src/test/java/com/jetwork/test/PaymentTestClient.java` 를 우클릭 → **Run As → Java Application** 하면

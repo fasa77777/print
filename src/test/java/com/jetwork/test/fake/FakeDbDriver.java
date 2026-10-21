@@ -47,7 +47,19 @@ public class FakeDbDriver implements Driver {
 	private static final Map<String, List<Map<String, String>>> TABLES = new LinkedHashMap<String, List<Map<String, String>>>();
 	/** 실행된 SQL (값이 채워진 형태) */
 	public static final List<String> LOG = Collections.synchronizedList(new ArrayList<String>());
+	/** 쿼리 한 번에 걸리는 시간 (실제 DB 왕복을 흉내). 0 이면 지연 없음 */
+	public static volatile long queryDelayMillis = 0;
+	/** true 면 DB 장애: 새 접속 실패, 열려 있던 커넥션도 쿼리 실패 */
+	public static volatile boolean down = false;
+	/** 지금 열려 있는 실제(물리) 커넥션 수와 지금까지의 최대, 만든 총수 */
+	public static final java.util.concurrent.atomic.AtomicInteger openConnections = new java.util.concurrent.atomic.AtomicInteger();
+	public static final java.util.concurrent.atomic.AtomicInteger maxOpenConnections = new java.util.concurrent.atomic.AtomicInteger();
+	public static final java.util.concurrent.atomic.AtomicInteger createdConnections = new java.util.concurrent.atomic.AtomicInteger();
+	/** 실행한 쿼리 수 (SELECT 1 확인 포함) */
+	public static final java.util.concurrent.atomic.AtomicLong statements = new java.util.concurrent.atomic.AtomicLong();
 	private static int seq = 0;
+	/** false 면 LOG 에 SQL 을 남기지 않는다 (부하 테스트용) */
+	public static volatile boolean logging = true;
 
 	static {
 		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt"));
@@ -66,6 +78,7 @@ public class FakeDbDriver implements Driver {
 		}
 		seq = 0;
 		LOG.clear();
+		logging = true;
 		add("jw_terminal", "terminal_id", "T1", "serial", "S1", "fran_id", "F1");
 		add("jw_franchise", "fran_id", "F1", "fran_name", "홍대점");
 		add("cybermoney", "cardNumber", "C1", "cyberMoney", "1000", "fran_id", "F1");
@@ -117,15 +130,34 @@ public class FakeDbDriver implements Driver {
 		if (!acceptsURL(url)) {
 			return null;
 		}
+		if (down) {
+			throw new SQLException("가짜 DB 장애 (접속 실패)");
+		}
+		createdConnections.incrementAndGet();
+		int n = openConnections.incrementAndGet();
+		while (true) {
+			int max = maxOpenConnections.get();
+			if (n <= max || maxOpenConnections.compareAndSet(max, n)) break;
+		}
 		final boolean[] closed = { false };
+		final boolean[] dead = { false };
 		return (Connection) proxy(Connection.class, new InvocationHandler() {
-			public Object invoke(Object o, Method m, Object[] a) {
+			public Object invoke(Object o, Method m, Object[] a) throws SQLException {
 				String nm = m.getName();
+				// DB 와 실제로 주고받는 동작만 장애 때 실패한다 (toString·getAutoCommit 같은 것은 실제 드라이버도 실패하지 않음)
+				if (down && (nm.equals("prepareStatement") || nm.equals("createStatement") || nm.equals("commit")
+						|| nm.equals("rollback") || nm.equals("setAutoCommit"))) {
+					dead[0] = true;
+					throw new SQLException("가짜 DB 장애 (연결 끊김)");
+				}
 				if (nm.equals("createStatement")) return statement(null);
 				if (nm.equals("prepareStatement")) return statement((String) a[0]);
-				if (nm.equals("close")) { closed[0] = true; return null; }
+				if (nm.equals("close")) {
+					if (!closed[0]) { closed[0] = true; openConnections.decrementAndGet(); }
+					return null;
+				}
 				if (nm.equals("isClosed")) return closed[0];
-				if (nm.equals("isValid")) return !closed[0];
+				if (nm.equals("isValid")) { if (down) dead[0] = true; return !closed[0] && !dead[0]; }
 				if (nm.equals("getAutoCommit")) return true;
 				if (nm.equals("getTransactionIsolation")) return Connection.TRANSACTION_READ_COMMITTED;
 				return common(o, m, a);
@@ -182,6 +214,12 @@ public class FakeDbDriver implements Driver {
 					return null;
 				}
 				String sql = a != null && a.length > 0 && a[0] instanceof String ? (String) a[0] : sql0;
+				if (nm.equals("executeQuery") || nm.equals("executeUpdate") || nm.equals("execute")) {
+					if (down) throw new SQLException("가짜 DB 장애 (쿼리 실패)");
+					statements.incrementAndGet();
+					long d = queryDelayMillis;
+					if (d > 0) Thread.sleep(d);
+				}
 				if (nm.equals("executeQuery")) return query(render(sql, params));
 				if (nm.equals("executeUpdate") || nm.equals("execute")) return update(render(sql, params));
 				return common(o, m, a);
@@ -262,7 +300,7 @@ public class FakeDbDriver implements Driver {
 	}
 
 	private static synchronized ResultSet query(String sql) {
-		LOG.add(sql);
+		if (logging) LOG.add(sql);
 		List<Map<String, String>> out = new ArrayList<Map<String, String>>();
 		if (sql.equals("SELECT 1")) {
 			out.add(Collections.singletonMap("1", "1"));
@@ -297,7 +335,7 @@ public class FakeDbDriver implements Driver {
 	}
 
 	private static synchronized int update(String sql) {
-		LOG.add(sql);
+		if (logging) LOG.add(sql);
 		Matcher mt = INS.matcher(sql);
 		if (mt.find()) {
 			String t = mt.group(1).toLowerCase();

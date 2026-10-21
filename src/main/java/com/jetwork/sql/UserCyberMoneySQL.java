@@ -51,7 +51,7 @@ public class UserCyberMoneySQL {
 			conn.commit();
 			return money;
 		} catch (Exception e) {
-			logger.error("UserCyberMoneySQL 처리 중 오류", e);
+			DbLog.error(logger, "UserCyberMoneySQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return "";
 		} finally {

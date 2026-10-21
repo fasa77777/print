@@ -69,7 +69,7 @@ public class TerminalInfoSQL {
 			}
 			conn.commit();
 		} catch (Exception e) {
-			logger.error("TerminalInfoSQL 처리 중 오류", e);
+			DbLog.error(logger, "TerminalInfoSQL", e);
 			CyberMoneyLedger.rollbackQuietly(conn);
 			return Status.ERROR;
 		} finally {

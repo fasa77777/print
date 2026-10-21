@@ -1,5 +1,6 @@
 package com.jetwork.bin;
 
+import com.jetwork.sql.DbLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,7 @@ public class JetworkServerApplication {
 			try {
 				conn.close();
 			} catch (SQLException e) {
-				logger.error("JetworkServerApplication 처리 중 오류", e);
+				DbLog.error(logger, "JetworkServerApplication", e);
 			}
 		}
 	}
