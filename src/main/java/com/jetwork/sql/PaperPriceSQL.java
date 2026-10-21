@@ -41,14 +41,8 @@ public class PaperPriceSQL {
 				}
 			}
 
-			try (PreparedStatement ps = conn.prepareStatement(
-					"UPDATE [dbo].[jw_terminal] SET [agent_version] = ?, [terminalVersion] = ?, [update] = getdate() "
-							+ " WHERE [terminal_id] = ?")) {
-				ps.setString(1, terminal.getAgentVersion());
-				ps.setString(2, terminal.getVersion());
-				ps.setString(3, terminal.getTerminalID());
-				ps.executeUpdate();
-			}
+			// 버전은 값이 왔을 때만 바꾼다 (매장 에이전트는 version 을 보내지 않으므로 terminalVersion 을 지우지 않게)
+			TerminalInfoSQL.updateVersions(conn, terminal.getTerminalID(), terminal.getAgentVersion(), terminal.getVersion());
 			conn.commit();
 		} catch (Exception e) {
 			logger.error("PaperPriceSQL 처리 중 오류", e);

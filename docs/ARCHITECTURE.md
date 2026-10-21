@@ -29,13 +29,13 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 
 | 주소 | 하는 일 | 응답 |
 |---|---|---|
-| `/postTerminal` | 단말기 ID+시리얼 확인, agent_version·terminalVersion·update 갱신 | OK / FALSE (DB 오류도 FALSE) |
+| `/postTerminal` | 단말기 ID+시리얼 확인, update 갱신. agent_version·terminalVersion 은 값이 왔을 때만 갱신 | OK / FALSE (DB 오류도 FALSE) |
 | `/postCyberMoney` | 사이버머니 잔액 조회. 처음 보는 카드는 0원 등록 | result=OK, money |
 | `/postCyberMoneyPayment` | 사이버머니 결제 | 아래 표 |
 | `/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 결제 (색상 1/2 → true/false) | 아래 표 (balance 는 0) |
 | `/postCraditPayment` | 카드·티머니·캐시비·교통카드 결제 기록 | 항상 OK |
 | `/kicc/postCraditPayment` | KICC 단말기 결제 기록 | 항상 OK |
-| `/printnuri/pricepolicy` | A4 흑백·컬러 가격, 버전(agent_version·terminalVersion) 갱신 | OK, a4color, a4mono |
+| `/printnuri/pricepolicy` | A4 흑백·컬러 가격. 버전(agent_version·terminalVersion)은 값이 왔을 때만 갱신. 가격이 없으면 각각 60원 | OK, a4color, a4mono |
 | `/printnuri/payment` | 프린트누리 결제 기록 | 항상 OK |
 | `/xerox/xeroxPayment` | 결제 단말기에 결제 요청 후 결과 대기 (소켓 서버를 켰을 때만 동작) | OK / NO |
 | `/postPrinter` | 프린터 상태 등록·갱신 | 이미 있던 프린터면 OK, 새로 등록하면 FALSE (jar 와 같음) |
@@ -78,6 +78,8 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | 같은 승인번호 카드 결제 중복 확인 | 결제마다 1초 대기, 기록을 지울 수 있음 | 대기 없이 잠금으로 한 건만 기록, 지우지 않음 |
 | 빈 카드번호 | cybermoney 에 빈 카드로 등록 | 등록하지 않음 (응답은 같은 no card) |
 | 결제 기록 후 jw_terminal.last_dt | 갱신 안 함 | 마지막 결제 시간으로 갱신 |
+| 가격 정보 없는 단말기 (`/printnuri/pricepolicy`) | a4color·a4mono 를 null 로 응답 → 매장 에이전트가 기본 5원으로 출력 | 없는 쪽을 60원으로 응답, 서버 로그에 경고 |
+| 요청에 버전 값이 없을 때 | agent_version·terminalVersion 을 null(문자열 'null') 또는 기본값 1.1.1 / 1052 로 덮어씀 | 기존 값 유지 (값이 온 것만 갱신) |
 | 요청에 값이 없을 때 (null) | 문자열 'null' 로 기록 | NULL 로 기록 |
 | DB 접속 정보 | 소스에 직접 적혀 있음 | db.properties·환경변수 |
 | 커넥션 풀 | commons-dbcp 1.4 (쓰지 않는 Spring Hikari 풀도 따로 만듦) | HikariCP 하나만 |

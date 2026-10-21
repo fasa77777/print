@@ -14,8 +14,9 @@ public class Terminal {
     String red;
     String yello;
     String terminalSerial;
-    String agentVersion = "1.1.1";
-    String terminalVersion = "1052";
+    // 기본값을 두지 않는다. 요청에 없으면 null → 버전 갱신을 하지 않는다. (실서버 jar 는 "1.1.1" / "1052" 를 기본값으로 저장했다)
+    String agentVersion;
+    String terminalVersion;
 
     public String getTerminalVersion() {
         return this.terminalVersion;

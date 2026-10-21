@@ -192,6 +192,7 @@ public class PostJetworkController {
    
    /**
     * 단말기별 A4 흑백·컬러 가격 조회. 실제 주소는 /jetwork/printnuri/pricepolicy 이다.
+   * 가격이 없으면 컬러·흑백 각각 60원(DEFAULT_PRICE)으로 응답한다.
     * 요청이 오면 단말기의 버전 정보도 갱신한다.
     */
    @RequestMapping(method = RequestMethod.POST, path = "/printnuri/pricepolicy" ,consumes = "application/json")
@@ -213,9 +214,31 @@ public class PostJetworkController {
    		}else if("N".equals(pr.getA4Color())) {
    			ps.setA4mono(pr.getA4PaperPrice());
    		}   		
-	}   	
+	}
+   	// 가격이 없으면(jw_paper 에 없음, 숫자가 아님, DB 오류) DEFAULT_PRICE 원으로 응답한다.
+   	// 예전에는 null 로 응답해서, 매장 에이전트가 가격을 숫자로 바꾸지 못하고 기본값 5원으로 출력했다.
+   	String color = priceOrDefault(ps.getA4color());
+   	String mono = priceOrDefault(ps.getA4mono());
+   	if (!isPrice(ps.getA4color()) || !isPrice(ps.getA4mono())) {
+   		logger.warn("가격 정보 없음 → 기본 {}원 사용 terminalID={} (jw_paper 컬러={} 흑백={})", DEFAULT_PRICE,
+   				terminal.getTerminalID(), ps.getA4color(), ps.getA4mono());
+   	}
+   	ps.setA4color(color);
+   	ps.setA4mono(mono);
    	ps.setResult("OK");
     return ps;
+   }
+
+   /** 가격 정보가 없을 때 쓰는 A4 1장 가격(원). 컬러·흑백 각각 적용 */
+   static final String DEFAULT_PRICE = "60";
+
+   /** 숫자인 가격이면 공백을 뗀 값, 비었거나 숫자가 아니면 DEFAULT_PRICE */
+   static String priceOrDefault(String price) {
+   	return isPrice(price) ? price.trim() : DEFAULT_PRICE;
+   }
+
+   private static boolean isPrice(String price) {
+   	return price != null && price.trim().matches("\\d+");
    }
    
    

@@ -75,6 +75,11 @@ public class FakeDbDriver implements Driver {
 		add("printer", "serialnumber", "P1", "devid", "D1", "sitename", "old");
 	}
 
+	/** 테스트 중 표에 행을 넣는다 (예: addRow("jw_paper", "terminalID", "T2", "paper_colorYN", "Y", ...)) */
+	public static synchronized void addRow(String table, String... kv) {
+		add(table, kv);
+	}
+
 	private static void add(String t, String... kv) {
 		Map<String, String> r = new LinkedHashMap<String, String>();
 		for (int i = 0; i < kv.length; i += 2) {
