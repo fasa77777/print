@@ -28,10 +28,10 @@ public class KiccCreaditPaymentSQL {
 			payType = "캐시비";
 		}
 
-		// 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다. 티머니·캐시비는 카드사명을 쓰지 않는다.
+		// 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다.
+		// 티머니·캐시비는 카드사명 자리에 "티머니"·"캐시비"를 기록한다 (/postCraditPayment 와 같게. 예전에는 빈칸)
 		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
-		String cardName = isCard ? CardCompanyName.getCardName(payment.getR12())
-				: CardCompanyName.getName(CardPaymentLedger.trim(payment.getR12()));
+		String cardName = isCard ? CardCompanyName.getCardName(payment.getR12()) : payType;
 
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
