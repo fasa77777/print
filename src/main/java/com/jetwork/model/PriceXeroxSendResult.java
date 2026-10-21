@@ -1,14 +1,13 @@
 package com.jetwork.model;
 
 /**
- * Xerox 결제 응답 (/stech/xerox/xeroxPayment).
+ * Xerox 결제 응답 (/jetwork/xerox/xeroxPayment).
  */
 public class PriceXeroxSendResult {
 	/** OK = 결제 승인, NO = 거절·취소·시간 초과 */
 	String result;
 	/** 명령 (항상 pay) */
 	String cmd;
-	
 
 	public String getCmd() {
 		return cmd;
@@ -25,6 +24,4 @@ public class PriceXeroxSendResult {
 	public void setResult(String result) {
 		this.result = result;
 	}
-	
-
 }

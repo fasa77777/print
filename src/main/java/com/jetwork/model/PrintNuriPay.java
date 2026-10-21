@@ -1,19 +1,10 @@
 package com.jetwork.model;
 
 /**
- * 프린트누리 결제 기록 요청 (/stech/printnuri/payment). 소켓 서버가 단말기 결과를 이 형식으로 만들어 보낸다.
+ * 프린트누리 결제 기록 요청 (/jetwork/printnuri/payment). 소켓 서버가 단말기 결과를 이 형식으로 만들어 보낸다.
  */
 public class PrintNuriPay {
-//	data.put("terminalID", sD[2]); //S03
-//	data.put("price", sD[9]); //S10
-//	data.put("payOK", sD[2]);//R09
-//	data.put("craditName", "");//R13
-//	data.put("payType","");//R11
-//	data.put("paperSize", "");
-//	data.put("color", "");
-//	data.put("count", "");
-//	ata.put("payTypeTM","");//R33
-	
+
 	/** 단말기 ID (S03) */
 	String terminalID;
 	/** 결제 금액 (S10) */
@@ -34,7 +25,7 @@ public class PrintNuriPay {
 	String payTypeTM;
 	/** 카드번호 (사용하지 않음) */
 	String cardNum;
-	
+
 	public String getPayTypeTM() {
 		return payTypeTM;
 	}
@@ -89,6 +80,4 @@ public class PrintNuriPay {
 	public void setPaperSize(String paperSize) {
 		this.paperSize = paperSize;
 	}
-	
-	
 }

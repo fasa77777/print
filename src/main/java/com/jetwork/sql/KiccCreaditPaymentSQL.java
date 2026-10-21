@@ -7,10 +7,10 @@ import org.slf4j.LoggerFactory;
 
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.CardCompanyName;
-import com.jetwork.model.RecordStatus;
 import com.jetwork.model.PaymentCreaditKicc;
+import com.jetwork.model.RecordStatus;
 
-/** KICC 단말기 결제 기록 (/stech/kicc/postCraditPayment). */
+/** KICC 단말기 결제 기록 (/jetwork/kicc/postCraditPayment). */
 public class KiccCreaditPaymentSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(KiccCreaditPaymentSQL.class);

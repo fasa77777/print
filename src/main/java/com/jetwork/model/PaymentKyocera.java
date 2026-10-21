@@ -1,14 +1,14 @@
 package com.jetwork.model;
 
 /**
- * 교세라 사이버머니 결제 요청 (/stech/kyocera/postCyberMoneyPayment).
+ * 교세라 사이버머니 결제 요청 (/jetwork/kyocera/postCyberMoneyPayment).
  */
 public class PaymentKyocera {
 	/** 보안 ID */
 	String SecureID;
 	/** 보안 키 */
 	String SecureKey;
-	
+
 	/** 명령 (pay 등) */
 	String cmd;
 	/** 컬러 여부 (1 = 컬러, 2 = 흑백) */
@@ -37,13 +37,13 @@ public class PaymentKyocera {
 	String totalAmount;
 	/** 총 매수 */
 	String totalPages;
-	
+
 	/** 처리 결과 */
 	String result;
-	
+
 	/** 사이버머니 카드번호 */
 	String userCard;
-	
+
 	/** 사이버머니 결제번호 (중복 결제 확인용) */
 	String cyberNo;
 
@@ -198,6 +198,4 @@ public class PaymentKyocera {
 	public void setCyberNo(String cyberNo) {
 		this.cyberNo = cyberNo;
 	}
-	
-	
 }

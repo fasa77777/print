@@ -23,8 +23,6 @@ import co.kr.json.JSonForm;
 import co.kr.json.JSonForm1;
 import co.kr.json.JSonForm2;
 import co.kr.json.JSonForm3;
-import co.kr.up.util.Bytes;
-import co.kr.up.util.HexUtils;
 import co.kr.up.util.Mask;
 
 /**
@@ -169,7 +167,7 @@ public class SocketServerDriver implements Runnable {
 			logger.warn("헤더보다 짧은 전문 무시 {} : {}", terminal, Arrays.toString(rcvData));
 			return;
 		}
-		String ck = Bytes.toHexString(rcvData[6]).trim();
+		String ck = String.format("%02x", rcvData[6] & 0xff);
 		logger.info("전문 수신 {} 작업코드={} {}bytes", terminal, ck, rcvData.length);
 		logger.debug("전문 원본 {}", Arrays.toString(rcvData));
 
@@ -180,11 +178,11 @@ public class SocketServerDriver implements Runnable {
 				logger.warn("02 전문이 짧아 단말기 ID 를 읽을 수 없음 {} {}bytes", terminal, rcvData.length);
 				return;
 			}
-			StringBuffer stBuffer = new StringBuffer();
-			for (byte b : getbytes(rcvData, 44, 10)) {
-				stBuffer.append(Bytes.UnitoStr(HexUtils.toHexString(b)));
+			StringBuilder id = new StringBuilder();
+			for (int i = 44; i < 44 + 10; i++) {
+				id.append((char) (rcvData[i] & 0xff));
 			}
-			terminal.setTerminalID(stBuffer.toString().trim());
+			terminal.setTerminalID(id.toString().trim());
 			if (!terminal.isPolicyRequested()) {
 				new JSonForm1().setPolicyJson(terminal);
 			}
@@ -199,12 +197,12 @@ public class SocketServerDriver implements Runnable {
 				logger.warn("06 전문이 짧아 카드번호를 읽을 수 없음 {} {}bytes", terminal, rcvData.length);
 				return;
 			}
-			StringBuffer stBuffer = new StringBuffer();
-			for (byte b : getbytes(rcvData, 8, 4)) {
-				stBuffer.append(HexUtils.toHexString(b));
+			StringBuilder card = new StringBuilder();
+			for (int i = 8; i < 8 + 4; i++) {
+				card.append(String.format("%02X", rcvData[i] & 0xff)); // 카드번호는 대문자 16진수 (예: 8E156710)
 			}
-			logger.info("사이버머니 카드 {} card={}", terminal, Mask.card(stBuffer.toString()));
-			new JSonForm2().setPaymentJson(terminal, stBuffer.toString());
+			logger.info("사이버머니 카드 {} card={}", terminal, Mask.card(card.toString()));
+			new JSonForm2().setPaymentJson(terminal, card.toString());
 
 		} else if ("04".equals(ck)) {
 			handlePaymentResult(terminal, rcvData);
@@ -222,7 +220,7 @@ public class SocketServerDriver implements Runnable {
 	private void handlePaymentResult(TerminalState terminal, byte[] raw) throws java.io.UnsupportedEncodingException {
 		String message = new String(raw, "UTF-8");
 		String[] sD = message.split(";");
-		java.util.Map<String, String> f = co.kr.json.JSonForm.toMap(sD);
+		java.util.Map<String, String> f = JSonForm.toMap(sD);
 
 		if (message.contains("CANCEL")) {
 			terminal.setResult(false);
@@ -284,23 +282,4 @@ public class SocketServerDriver implements Runnable {
 		}
 		return -1;
 	}
-
-	/** 문자열의 각 글자를 "%02X " 형식의 16진수로 바꾼다. 예) "AB" -> "41 42 " */
-	  public String stringToHex(String s) {
-		    String result = "";
-
-		    for (int i = 0; i < s.length(); i++) {
-		      result += String.format("%02X ", (int) s.charAt(i));
-		    }
-
-		    return result;
-	  }
-	  
-			/** src 의 offset 부터 length 바이트를 잘라 새 배열로 돌려준다. */
-		public static final byte[] getbytes(byte src[], int offset, int length){
-	        byte dest[] = new byte[length];
-	        System.arraycopy(src, offset, dest, 0, length);
-	        return dest;
-	    }
-
 }

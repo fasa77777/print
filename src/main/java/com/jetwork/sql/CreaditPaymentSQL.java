@@ -11,7 +11,7 @@ import com.jetwork.model.CardCompanyName;
 import com.jetwork.model.PaymentKicc;
 import com.jetwork.model.RecordStatus;
 
-/** 신용·체크카드, 티머니, 캐시비 결제 기록 (/stech/postCraditPayment). */
+/** 신용·체크카드, 티머니, 캐시비 결제 기록 (/jetwork/postCraditPayment). */
 public class CreaditPaymentSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(CreaditPaymentSQL.class);

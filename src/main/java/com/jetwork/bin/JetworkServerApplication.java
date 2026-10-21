@@ -1,17 +1,16 @@
 package com.jetwork.bin;
 
-import com.jetwork.sql.DbLog;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 import com.jetwork.sql.DBCPConnectionMgr;
+import com.jetwork.sql.DbLog;
 import com.stech.Network.SocketServerDriver;
 
 /**

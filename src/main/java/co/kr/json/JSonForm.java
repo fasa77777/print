@@ -5,16 +5,12 @@ import java.util.Map;
 
 import org.json.simple.JSONObject;
 
-
-
-
-
 /**
  * 카드 결제 승인 결과(단말기 작업 코드 04, R04=0000)를 중계 서버의 /printnuri/payment 로 보낸다.
  * 단말기 전문을 ';' 로 나눈 "키=값" 목록에서 키로 값을 꺼낸다 (S03=단말기 ID, S10=금액, R09=승인번호, R11=체크카드 여부, R12=발급사 코드, R33=교통카드 구분).
  */
 public class JSonForm {
-	
+
 	public void setPaymentJson(String [] sD) {
 		// 위치(sD[2] 등)로 꺼내면 빈 필드가 하나만 끼어도 값이 밀려 엉뚱한 값이 기록되므로, 키로 찾는다.
 		Map<String, String> f = toMap(sD);
@@ -42,5 +38,4 @@ public class JSonForm {
 		}
 		return map;
 	}
-
 }

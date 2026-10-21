@@ -1,16 +1,16 @@
 package com.jetwork.sql;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.Terminal;
 
-/** 단말기 등록 확인과 버전 정보 갱신 (/stech/postTerminal). */
+/** 단말기 등록 확인과 버전 정보 갱신 (/jetwork/postTerminal). */
 public class TerminalInfoSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(TerminalInfoSQL.class);

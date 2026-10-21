@@ -4,49 +4,49 @@
 package com.jetwork.model;
 
 public class PaymentResult {
-    String terminalID;
-    String result;
-    String text;
-    String reason;
-    int balance;
+	String terminalID;
+	String result;
+	String text;
+	String reason;
+	int balance;
 
-    public int getBalance() {
-        return this.balance;
-    }
+	public int getBalance() {
+		return this.balance;
+	}
 
-    public void setBalance(int balance) {
-        this.balance = balance;
-    }
+	public void setBalance(int balance) {
+		this.balance = balance;
+	}
 
-    public String getTerminalID() {
-        return this.terminalID;
-    }
+	public String getTerminalID() {
+		return this.terminalID;
+	}
 
-    public void setTerminalID(String terminalID) {
-        this.terminalID = terminalID;
-    }
+	public void setTerminalID(String terminalID) {
+		this.terminalID = terminalID;
+	}
 
-    public String getResult() {
-        return this.result;
-    }
+	public String getResult() {
+		return this.result;
+	}
 
-    public void setResult(String result) {
-        this.result = result;
-    }
+	public void setResult(String result) {
+		this.result = result;
+	}
 
-    public String getText() {
-        return this.text;
-    }
+	public String getText() {
+		return this.text;
+	}
 
-    public void setText(String text) {
-        this.text = text;
-    }
+	public void setText(String text) {
+		this.text = text;
+	}
 
-    public String getReason() {
-        return this.reason;
-    }
+	public String getReason() {
+		return this.reason;
+	}
 
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
+	public void setReason(String reason) {
+		this.reason = reason;
+	}
 }

@@ -13,8 +13,6 @@ public class CyberMoneyResult {
 		NO_CARD,
 		/** 잔액 부족 */
 		INSUFFICIENT,
-		/** 같은 카드·결제번호(cyberNo)로 이미 처리된 결제. 지금은 쓰지 않음 (연속 결제를 허용하므로) */
-		DUPLICATE,
 		/** 금액 형식 오류나 DB 오류 */
 		ERROR
 	}
@@ -59,12 +57,6 @@ public class CyberMoneyResult {
 			pr.setResult("FAIL");
 			pr.setText("잔액부족 충전후 사용하세요");
 			pr.setReason("no money");
-			break;
-		case DUPLICATE:
-			// 실서버 jar 는 "등록되지 않은 카드"(no card)로 잘못 안내했다. 결과(FAIL)는 같다.
-			pr.setResult("FAIL");
-			pr.setText("이미 처리된 결제입니다.");
-			pr.setReason("duplicate");
 			break;
 		default:
 			// 실서버 jar 는 DB 오류 시 500 오류로 응답했다.

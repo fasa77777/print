@@ -1,16 +1,16 @@
 package com.jetwork.sql;
 
+import java.sql.Connection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-
 import com.jetwork.bin.ConnectionPool;
 import com.jetwork.model.CardCompanyName;
-import com.jetwork.model.RecordStatus;
 import com.jetwork.model.PrintNuriPay;
+import com.jetwork.model.RecordStatus;
 
-/** 프린트누리 결제 기록 (/stech/printnuri/payment). */
+/** 프린트누리 결제 기록 (/jetwork/printnuri/payment). */
 public class PrintNuriCreaditPaymentSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(PrintNuriCreaditPaymentSQL.class);

@@ -3,18 +3,18 @@ package com.jetwork.model;
 import com.fasterxml.jackson.annotation.JsonSetter;
 
 /**
- * 카드·사이버머니 결제 요청 (/stech/postCraditPayment, /stech/postCyberMoneyPayment).
+ * 카드·사이버머니 결제 요청 (/jetwork/postCraditPayment, /jetwork/postCyberMoneyPayment).
  * R01~R34 는 KICC 결제 단말기의 응답 전문 필드를 그대로 받은 것이다.
  */
 public class PaymentKicc {
 /**
-  {"R01":"P","R02":"A","R03":"0000","R04":"0000","R05":"031","R06":"0000","R07":"2006272309186","R08":"","R09":"99230915    ",
-  "R10":"","R11":"N","R12":"031","R13":"국민은행","R14":"166127521   ","R15":" Ｚī           ",
-  "R16":"d","R17":"","R18":"00000000","R19":"TEST ","R20":"272341031896","R21":"","R22":"N","R23":"379183","R24":"","R25":"",
-  "R26":"","R27":"","R28":"","R29":"","R30":"","SecureID":"328","SecureKey":"52347227924328","cmd":"pay","color":false,"copies":1,
-  "duplex":false,"jobType":"Copy","mac":"30:cd:a7:c8:fa:90","nUp":1,"paperSize":"A4","scanCount":1,"serial":"0BY8BJEH500015W",
-  "terminalID":"0788888","timeOut":70,"totalAmount":10,"totalPages":1, "userCard":"53C797A2"} 
- * 
+{"R01":"P","R02":"A","R03":"0000","R04":"0000","R05":"031","R06":"0000","R07":"2006272309186","R08":"","R09":"99230915    ",
+"R10":"","R11":"N","R12":"031","R13":"국민은행","R14":"166127521   ","R15":" Ｚī           ",
+"R16":"d","R17":"","R18":"00000000","R19":"TEST ","R20":"272341031896","R21":"","R22":"N","R23":"379183","R24":"","R25":"",
+"R26":"","R27":"","R28":"","R29":"","R30":"","SecureID":"328","SecureKey":"52347227924328","cmd":"pay","color":false,"copies":1,
+"duplex":false,"jobType":"Copy","mac":"30:cd:a7:c8:fa:90","nUp":1,"paperSize":"A4","scanCount":1,"serial":"0BY8BJEH500015W",
+"terminalID":"0788888","timeOut":70,"totalAmount":10,"totalPages":1, "userCard":"53C797A2"}
+ *
  */
 	String R01;
 	String R02;
@@ -26,7 +26,7 @@ public class PaymentKicc {
 	String R07;
 	String R08;
 	String R09; //승인번호
-	String R10; 
+	String R10;
 	String R11;// C:체크 카드 N:일반 카드
 	/** KICC 단말기 응답 필드 R12 (발급사 코드, CardCompanyName 으로 카드사명 변환) */
 	String R12;
@@ -54,14 +54,11 @@ public class PaymentKicc {
 	String R33; //TM : 티머니, EB : 캐시비 구분
 	String R34;
 
-	
-	
-	
 	/** 보안 ID */
 	String SecureID;
 	/** 보안 키 */
 	String SecureKey;
-	
+
 	/** 명령 (pay 등) */
 	String cmd;
 	/** 컬러 여부 */
@@ -90,17 +87,15 @@ public class PaymentKicc {
 	String totalAmount;
 	/** 총 매수 */
 	String totalPages;
-	
+
 	/** 처리 결과 */
 	String result;
-	
+
 	/** 사이버머니 카드번호 */
 	String userCard;
-	
+
 	/** 사이버머니 결제번호 (중복 결제 확인용) */
 	String cyberNo;
-	
-	
 
 	public String getCyberNo() {
 		return cyberNo;
@@ -130,7 +125,7 @@ public class PaymentKicc {
 	public String getR02() {
 		return R02;
 	}
-	
+
 	@JsonSetter("R02")
 	public void setR02(String r02) {
 		R02 = r02;
@@ -223,7 +218,7 @@ public class PaymentKicc {
 	public void setR13(String r13) {
 		R13 = r13;
 	}
-	
+
 	public String getR14() {
 		return R14;
 	}
@@ -351,7 +346,7 @@ public class PaymentKicc {
 	public void setR29(String r29) {
 		R29 = r29;
 	}
-	
+
 	public String getR30() {
 		return R30;
 	}
@@ -375,7 +370,7 @@ public class PaymentKicc {
 	public void setR32(String r32) {
 		R32 = r32;
 	}
-	
+
 	public String getR33() {
 		return R33;
 	}
@@ -527,8 +522,4 @@ public class PaymentKicc {
 	public void setResult(String result) {
 		this.result = result;
 	}
-	
-
-	
-	
 }

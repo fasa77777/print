@@ -1,13 +1,10 @@
 package com.jetwork.sql;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -17,7 +14,7 @@ import com.zaxxer.hikari.HikariPoolMXBean;
  * MSSQL 커넥션 풀 (HikariCP).
  *
  * 각 SQL 클래스는 ConnectionPool.getInst().getConnection() 으로 커넥션을 빌리고,
- * 다 쓰면 freeConnection(...) 또는 close() 로 반납한다. (close() 하면 실제로 끊지 않고 풀로 돌아간다)
+ * 다 쓰면 freeConnection(conn) 또는 close() 로 반납한다. (close() 하면 실제로 끊지 않고 풀로 돌아간다)
  *
  * 예전에는 commons-dbcp 1.4 (2010년, 지원 종료)를 썼다. 바꾼 이유
  *  - 커넥션을 빌리고 돌려줄 때 풀 전체에 잠금 하나를 걸어서, 동시에 요청이 몰리면 서로 기다렸다
@@ -169,71 +166,15 @@ public class DBCPConnectionMgr {
 		return sb.toString();
 	}
 
-    public void freeConnection(Connection con, PreparedStatement pstmt, ResultSet rs) {
-        try {
-            if (rs != null) rs.close();
-            if (pstmt != null) pstmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-    public void freeConnection(Connection con, Statement stmt, ResultSet rs) {
-        try {
-            if (rs != null) rs.close();
-            if (stmt != null) stmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-   
-    public void freeConnection(Connection con, PreparedStatement pstmt) {
-        try {
-            if (pstmt != null) pstmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }   
-    public void freeConnection(Connection con, Statement stmt) {
-        try {
-            if (stmt != null) stmt.close();
-            freeConnection(con);
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-   
-    public void freeConnection(Connection con) {
-        try {
-            if (con != null) con.close();
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-   
-    public void freeConnection(Statement stmt) {
-        try {
-            if (stmt != null) stmt.close();
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-   
-    public void freeConnection(PreparedStatement pstmt) {
-        try {
-            if (pstmt != null) pstmt.close();
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }
-    public void freeConnection(ResultSet rs) {
-        try {
-            if (rs != null) rs.close();
-        } catch (SQLException e) {
-            DbLog.error(logger, "DBCPConnectionMgr", e);
-        }
-    }   
-   
+	/** 빌린 커넥션을 풀로 돌려준다 (close 해도 실제로 끊지 않고 풀로 돌아간다). null 이면 아무것도 하지 않는다 */
+	public void freeConnection(Connection con) {
+		if (con == null) {
+			return;
+		}
+		try {
+			con.close();
+		} catch (SQLException e) {
+			DbLog.error(logger, "DBCPConnectionMgr", e);
+		}
+	}
 }

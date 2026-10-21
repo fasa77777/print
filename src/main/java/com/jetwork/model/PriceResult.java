@@ -4,7 +4,7 @@ package com.jetwork.model;
  * jw_paper 테이블의 용지 가격 한 줄.
  */
 public class PriceResult {
-	
+
 	/** 용지 크기 (paper_size) */
 	String A4PaperSize;
 	/** 장당 가격 (paper_price) */
@@ -37,8 +37,4 @@ public class PriceResult {
 	public void setResult(String result) {
 		this.result = result;
 	}
-	
-	
-
-
 }

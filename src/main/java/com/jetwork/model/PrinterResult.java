@@ -20,5 +20,4 @@ public class PrinterResult {
 	public void setResult(String result) {
 		this.result = result;
 	}
-	
 }

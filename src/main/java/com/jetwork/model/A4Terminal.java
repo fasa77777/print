@@ -4,31 +4,31 @@
 package com.jetwork.model;
 
 public class A4Terminal {
-    String terminalID;
-    String agentVersion;
-    String version;
+	String terminalID;
+	String agentVersion;
+	String version;
 
-    public String getVersion() {
-        return this.version;
-    }
+	public String getVersion() {
+		return this.version;
+	}
 
-    public void setVersion(String version) {
-        this.version = version;
-    }
+	public void setVersion(String version) {
+		this.version = version;
+	}
 
-    public String getAgentVersion() {
-        return this.agentVersion;
-    }
+	public String getAgentVersion() {
+		return this.agentVersion;
+	}
 
-    public void setAgentVersion(String agentVersion) {
-        this.agentVersion = agentVersion;
-    }
+	public void setAgentVersion(String agentVersion) {
+		this.agentVersion = agentVersion;
+	}
 
-    public String getTerminalID() {
-        return this.terminalID;
-    }
+	public String getTerminalID() {
+		return this.terminalID;
+	}
 
-    public void setTerminalID(String terminalID) {
-        this.terminalID = terminalID;
-    }
+	public void setTerminalID(String terminalID) {
+		this.terminalID = terminalID;
+	}
 }

@@ -1,7 +1,8 @@
 package com.jetwork.model;
-//{"cmd":"pay","jobType":"Copy","totalAmount":10,"totalPages":1}"color":false,"paperSize":"A4"}
+
 /**
- * Xerox 출력 결제 요청 (/stech/xerox/xeroxPayment).
+ * Xerox 출력 결제 요청 (/jetwork/xerox/xeroxPayment).
+ * 예) {"cmd":"pay","jobType":"Copy","totalAmount":10,"totalPages":1,"color":false,"paperSize":"A4"}
  */
 public class XeroxPay {
 	/** 명령 (pay) */
@@ -12,7 +13,7 @@ public class XeroxPay {
 	String totalAmount;
 	/** 총 매수 */
 	String totalPages;
-	
+
 	/** 컬러 여부 */
 	String color;
 	/** 용지 크기 */
@@ -26,8 +27,7 @@ public class XeroxPay {
 	public void setTerminalID(String terminalID) {
 		this.terminalID = terminalID;
 	}
-	
-	
+
 	public String getCmd() {
 		return cmd;
 	}
@@ -64,6 +64,4 @@ public class XeroxPay {
 	public void setTotalPages(String totalPages) {
 		this.totalPages = totalPages;
 	}
-	
-	
 }

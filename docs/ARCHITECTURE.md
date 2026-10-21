@@ -21,7 +21,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `com.jetwork.model` | 요청·응답 모델 (실서버 jar 와 같은 필드) |
 | `com.stech.Network` | 결제 단말기 소켓 서버 |
 | `co.kr.json` | 중계 서버로 보내는 JSON (JsonHttpClient 공통) |
-| `co.kr.up.util` | 바이트·16진수 변환, 카드번호 가리기(Mask) |
+| `co.kr.up.util` | 카드번호 가리기(Mask) |
 
 전체 로그용: `com.jetwork.bin.TraceFilter`(HTTP 요청·응답), `com.jetwork.sql.SqlTrace`(SQL). 9장 참고.
 
@@ -41,6 +41,10 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `/printnuri/payment` | 프린트누리 결제 기록 | 항상 OK |
 | `/xerox/xeroxPayment` | 결제 단말기에 결제 요청 후 결과 대기 (소켓 서버를 켰을 때만 동작) | OK / NO |
 | `/postPrinter` | 프린터 상태 등록·갱신 | 이미 있던 프린터면 OK, 새로 등록하면 FALSE (jar 와 같음) |
+
+PostJetworkController 의 메서드 이름 (jar 의 postRequest ~ postRequest9 에서 바꿈, 주소·응답은 같음):
+`checkTerminal`(postRequest), `cyberMoneyBalance`(1), `cyberMoneyPayment`(2), `cardPayment`(3), `kyoceraCyberMoneyPayment`(4),
+`kiccCardPayment`(5), `pricePolicy`(6), `printNuriPayment`(7), `xeroxPayment`(8), `printerStatus`(9).
 
 사이버머니 결제 응답
 

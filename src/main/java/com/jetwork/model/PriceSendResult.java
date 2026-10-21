@@ -1,7 +1,7 @@
 package com.jetwork.model;
 
 /**
- * 가격 정책 응답 (/stech/printnuri/pricepolicy, /stech/printnuri/payment).
+ * 가격 정책 응답 (/jetwork/printnuri/pricepolicy, /jetwork/printnuri/payment).
  */
 public class PriceSendResult {
 	/** A4 컬러 장당 가격 */
@@ -28,5 +28,4 @@ public class PriceSendResult {
 	public void setResult(String result) {
 		this.result = result;
 	}
-	
 }
