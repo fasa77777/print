@@ -193,6 +193,17 @@ public class OfflineTest {
 				"payType", "N", "payTypeTM", "", "color", "true", "count", "3", "paperSize", "A4"), "result", "OK");
 		p = FakeDbDriver.find("jw_payment", "payment_ok", "P77");
 		check("프린트누리 신용카드·삼성 카드사·500원·3장", p != null && "삼성 카드사".equals(p.get("payment_cardName")) && "500".equals(p.get("payment_pay")) && "3".equals(p.get("payment_totalCount")));
+		card("/kicc/postCraditPayment", "R09", "K8", "R10", "", "R12", "", "R33", "TM ");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "K8");
+		check("KICC 티머니 → 카드사명 티머니", p != null && "티머니".equals(p.get("payment_type")) && "티머니".equals(p.get("payment_cardName")));
+		post("/printnuri/payment", "terminalID", "T1", "price", "300", "payOK", "P78", "craditName", "",
+				"payType", "TM", "payTypeTM", "EB", "color", "false", "count", "1", "paperSize", "A4");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "P78");
+		check("프린트누리 캐시비 → 카드사명 캐시비", p != null && "캐시비".equals(p.get("payment_type")) && "캐시비".equals(p.get("payment_cardName")));
+		post("/printnuri/payment", "terminalID", "T1", "price", "300", "payOK", "P79", "craditName", "",
+				"payType", "N", "payTypeTM", "", "color", "false", "count", "1", "paperSize", "A4");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "P79");
+		check("프린트누리 카드사 코드 없음 → 해외카드", p != null && "신용카드".equals(p.get("payment_type")) && "해외카드".equals(p.get("payment_cardName")));
 
 		section("3-1. 실제 결제 요청 형식 (test-requests/real-card-payment.json)");
 		PaymentTestClient.terminalID = "T1";
