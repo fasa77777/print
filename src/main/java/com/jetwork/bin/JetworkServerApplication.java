@@ -18,7 +18,7 @@ import com.stech.Network.SocketServerDriver;
  *
  * 1. Spring Boot 웹 서버(HTTP API, 포트는 application.properties 의 server.port)를 띄우고
  * 2. DB 커넥션 풀(DBCPConnectionMgr, HikariCP)을 만들고
- * 3. -Dsocket.server=true 이면 결제 단말기와 통신하는 소켓 서버(포트 10020)를 별도 스레드로 띄운다. (기본은 끔, 실서버 jar 와 같음)
+ * 3. 결제 단말기와 통신하는 소켓 서버(포트 10020)를 별도 스레드로 띄운다. (-Dsocket.server=false 이면 띄우지 않음)
  *
  * 컨트롤러는 이 클래스와 같은 패키지(com.jetwork.bin) 아래에 있어야 Spring 이 찾는다.
  *
@@ -39,14 +39,14 @@ public class JetworkServerApplication {
 		ConnectionPool cp = new ConnectionPool();
 		cp.connection();
 
-		// 결제 단말기 소켓 서버(10020). 실서버 jar 처럼 기본은 시작하지 않는다.
-		// 필요하면 실행 옵션 -Dsocket.server=true 로 켠다.
-		if (Boolean.getBoolean("socket.server")) {
+		// 결제 단말기 소켓 서버(10020). 기본으로 연다. (실서버 jar 는 열지 않았다)
+		// 끄려면 실행 옵션 -Dsocket.server=false
+		if (Boolean.parseBoolean(System.getProperty("socket.server", "true").trim())) {
 			Thread socketThread = new Thread(new SocketServerDriver());
 			socketThread.setName("SocketServerDriver #1");
 			socketThread.start();
 		} else {
-			logger.info("단말기 소켓 서버(10020)는 시작하지 않음 (켜려면 -Dsocket.server=true)");
+			logger.info("단말기 소켓 서버(10020)는 시작하지 않음 (-Dsocket.server=false)");
 		}
 
 		// 시작할 때 DB 에 접속되는지 한 번 확인 (확인 후 커넥션은 바로 반납)

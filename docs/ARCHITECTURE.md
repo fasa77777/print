@@ -9,7 +9,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 단말기·복사기 에이전트 ──HTTP(8090)──▶ PostJetworkController (/jetwork/...) ──▶ com.jetwork.sql.*SQL ──▶ MSSQL
                                                                                   (DBCPConnectionMgr = HikariCP 커넥션 풀)
 결제 단말기 ──소켓(10020)──▶ SocketServerDriver ──▶ 중계 서버(pay1.printnuri.com:8090/jetwork)
-                              ※ 실서버 jar 처럼 기본은 시작하지 않음 (-Dsocket.server=true 일 때만)
+                              ※ 기본으로 시작 (끄려면 -Dsocket.server=false). 실서버 jar 는 시작하지 않았음
 ```
 
 ## 2. 패키지
@@ -37,7 +37,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `/kicc/postCraditPayment` | KICC 단말기 결제 기록 | 항상 OK |
 | `/printnuri/pricepolicy` | A4 흑백·컬러 가격, 버전(agent_version·terminalVersion) 갱신 | OK, a4color, a4mono |
 | `/printnuri/payment` | 프린트누리 결제 기록 | 항상 OK |
-| `/xerox/xeroxPayment` | 결제 단말기에 결제 요청 후 결과 대기 (소켓 서버를 켰을 때만 동작) | OK / NO |
+| `/xerox/xeroxPayment` | 결제 단말기에 결제 요청 후 결과 대기 (소켓 서버가 받은 단말기 결과로 응답) | OK / NO |
 | `/postPrinter` | 프린터 상태 등록·갱신 | 이미 있던 프린터면 OK, 새로 등록하면 FALSE (jar 와 같음) |
 
 사이버머니 결제 응답
@@ -78,6 +78,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | 같은 승인번호 카드 결제 중복 확인 | 결제마다 1초 대기, 기록을 지울 수 있음 | 대기 없이 잠금으로 한 건만 기록, 지우지 않음 |
 | 빈 카드번호 | cybermoney 에 빈 카드로 등록 | 등록하지 않음 (응답은 같은 no card) |
 | 결제 기록 후 jw_terminal.last_dt | 갱신 안 함 | 마지막 결제 시간으로 갱신 |
+| 결제 단말기 소켓 서버(10020) | 열지 않음 (Xerox 결제도 동작하지 않음) | 기본으로 엶 (`-Dsocket.server=false` 로 끔) |
 | 요청에 값이 없을 때 (null) | 문자열 'null' 로 기록 | NULL 로 기록 |
 | DB 접속 정보 | 소스에 직접 적혀 있음 | db.properties·환경변수 |
 | 커넥션 풀 | commons-dbcp 1.4 (쓰지 않는 Spring Hikari 풀도 따로 만듦) | HikariCP 하나만 |
@@ -131,11 +132,11 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 | `src/main/resources/db.properties` | **Git 에 올리지 않음.** 이클립스에서 실행할 때 쓰기 좋음. `db.properties.example` 을 복사해서 `db.url`, `db.username`, `db.password` 를 채운다. 풀 크기 `db.pool.maxActive` / `db.pool.minIdle` (기본 200 / 10) |
 | 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 있으면 db.properties 보다 우선 |
 | `db.driver` (db.properties) | JDBC 드라이버 클래스. 보통은 쓰지 않음 (기본 MSSQL). 테스트 프로그램 OfflineTest 가 가짜 DB 드라이버를 지정할 때 쓴다 |
-| 실행 옵션 `-Dsocket.server=true` | 결제 단말기 소켓 서버(10020) 시작. 기본은 꺼짐 (jar 와 같음) |
+| 실행 옵션 `-Dsocket.server=false` | 결제 단말기 소켓 서버(10020)를 열지 않음. 기본은 엶 |
 | 실행 옵션 `-Drelay.baseUrl=...` | 소켓 서버가 결과를 보내는 중계 서버 주소 (기본 `http://pay1.printnuri.com:8090/jetwork`) |
 
 ## 9. 남은 문제
 
 1. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. 운영 서버의 Java 버전을 확인한 뒤 올리는 게 좋다.
-2. 소켓 서버를 켜고 Xerox 결제를 쓸 때, 복사기 에이전트와 결제 단말기의 IP 가 다르면 결제 요청에 `terminalID` 를 넣어야 정확한 단말기로 간다.
+2. Xerox 결제를 쓸 때, 복사기 에이전트와 결제 단말기의 IP 가 다르면 결제 요청에 `terminalID` 를 넣어야 정확한 단말기로 간다.
 3. `/postPrinter` 는 jar 와 같이 `[SONTECH].[dbo].[printer]` 에서 등록 여부를 보고, 현재 DB 의 `[dbo].[printer]` 에 기록한다. 두 DB 가 다르면 확인이 필요하다.
