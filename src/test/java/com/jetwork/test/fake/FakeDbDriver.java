@@ -221,7 +221,17 @@ public class FakeDbDriver implements Driver {
 					if (d > 0) Thread.sleep(d);
 				}
 				if (nm.equals("executeQuery")) return query(render(sql, params));
-				if (nm.equals("executeUpdate") || nm.equals("execute")) return update(render(sql, params));
+				if (nm.equals("executeUpdate")) return update(render(sql, params));
+				if (nm.equals("execute")) {
+					// 커넥션 풀의 확인 쿼리(SELECT 1)는 execute 로 온다
+					String r = render(sql, params);
+					if (r.trim().toUpperCase().startsWith("SELECT")) {
+						query(r);
+						return true;
+					}
+					update(r);
+					return false;
+				}
 				return common(o, m, a);
 			}
 		});
