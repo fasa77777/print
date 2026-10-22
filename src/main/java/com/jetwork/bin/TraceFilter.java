@@ -29,7 +29,8 @@ import co.kr.up.util.Mask;
  *   끝:   응답 코드, 걸린 시간, 응답 본문
  * 같은 요청에서 나온 다른 로그(SQL 등)에도 같은 번호가 붙는다 (로그 패턴의 %X{req}).
  * 카드번호(userCard, cardNumber, cardNo 값)는 가린다.
- * 끄면(기본) 아무것도 하지 않고 다음 단계로 넘긴다.
+ * 디버깅 페이지가 켜져 있으면 로그와 별도로 최근 요청 기록(RequestRecorder)에도 남긴다.
+ * 둘 다 꺼져 있으면(기본) 아무것도 하지 않고 다음 단계로 넘긴다.
  */
 @Component
 public class TraceFilter extends OncePerRequestFilter {
@@ -44,24 +45,40 @@ public class TraceFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-		if (!log.isDebugEnabled()) {
+		boolean logOn = log.isDebugEnabled();
+		boolean record = RequestRecorder.enabled() && !request.getRequestURI().startsWith(DebugController.PATH);
+		if (!logOn && !record) {
 			chain.doFilter(request, response);
 			return;
 		}
-		String id = "#" + SEQ.incrementAndGet();
-		MDC.put("req", id);
-		ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+		long seq = SEQ.incrementAndGet();
+		MDC.put("req", "#" + seq);
+		ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, MAX_BODY); // 본문은 MAX_BODY 까지만 메모리에 담는다
 		ContentCachingResponseWrapper res = new ContentCachingResponseWrapper(response);
+		RequestRecorder.Record rec = record ? RequestRecorder.start(seq, request.getMethod(), uri(request), request.getRemoteAddr()) : null;
 		long t0 = System.nanoTime();
-		log.debug("요청 시작 {} {} from {}", request.getMethod(), uri(request), request.getRemoteAddr());
+		if (logOn) {
+			log.debug("요청 시작 {} {} from {}", request.getMethod(), uri(request), request.getRemoteAddr());
+		}
 		try {
 			chain.doFilter(req, res);
 		} catch (IOException | ServletException | RuntimeException e) {
-			log.debug("요청 처리 중 예외: {}", e.toString());
+			if (logOn) {
+				log.debug("요청 처리 중 예외: {}", e.toString());
+			}
+			RequestRecorder.sql("요청 처리 중 예외: " + e);
 			throw e;
 		} finally {
-			log.debug("요청 본문: {}", body(req.getContentAsByteArray()));
-			log.debug("응답 {} ({}ms): {}", res.getStatus(), (System.nanoTime() - t0) / 1000000, body(res.getContentAsByteArray()));
+			long ms = (System.nanoTime() - t0) / 1000000;
+			String reqBody = body(req.getContentAsByteArray());
+			String resBody = body(res.getContentAsByteArray());
+			if (logOn) {
+				log.debug("요청 본문: {}", reqBody);
+				log.debug("응답 {} ({}ms): {}", res.getStatus(), ms, resBody);
+			}
+			if (rec != null) {
+				RequestRecorder.finish(rec, res.getStatus(), ms, reqBody, resBody);
+			}
 			res.copyBodyToResponse();
 			MDC.remove("req");
 		}
@@ -77,7 +94,7 @@ public class TraceFilter extends OncePerRequestFilter {
 		}
 		String s = new String(b, 0, Math.min(b.length, MAX_BODY), StandardCharsets.UTF_8).replaceAll("[\\r\\n]+", " ");
 		s = mask(s);
-		return b.length > MAX_BODY ? s + " …(" + b.length + "바이트 중 앞부분)" : s;
+		return b.length >= MAX_BODY ? s + " …(앞 " + MAX_BODY + "바이트만)" : s;
 	}
 
 	static String mask(String json) {

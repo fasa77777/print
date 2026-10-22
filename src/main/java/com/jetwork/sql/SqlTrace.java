@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jetwork.bin.RequestRecorder;
+
 import co.kr.up.util.Mask;
 
 /**
@@ -42,8 +44,17 @@ public final class SqlTrace {
 	private SqlTrace() {
 	}
 
+	/** SQL 을 기록할지: 전체 로그(DEBUG)가 켜져 있거나 디버깅 페이지가 켜져 있으면 */
 	public static boolean enabled() {
-		return log.isDebugEnabled();
+		return log.isDebugEnabled() || RequestRecorder.enabled();
+	}
+
+	/** 한 줄을 로그(DEBUG 일 때)와 디버깅 페이지의 최근 요청 기록에 남긴다 */
+	private static void emit(String line) {
+		if (log.isDebugEnabled()) {
+			log.debug(line);
+		}
+		RequestRecorder.sql(line);
 	}
 
 	/** 커넥션을 감싼다 (enabled() 일 때만 부른다) */
@@ -58,7 +69,7 @@ public final class SqlTrace {
 							return statement((PreparedStatement) r, (String) args[0]);
 						}
 						if (name.equals("commit") || name.equals("rollback")) {
-							log.debug("{} ({})", name, ms(t0));
+							emit(name + " (" + ms(t0) + ")");
 						}
 						return r;
 					}
@@ -83,7 +94,7 @@ public final class SqlTrace {
 						if (name.equals("executeUpdate") && (args == null || args.length == 0)) {
 							long t0 = System.nanoTime();
 							Object n = call(target, m, args, sql + params(sql, params));
-							log.debug("{}{} → {}행 바뀜 ({})", oneLine(sql), params(sql, params), n, ms(t0));
+							emit(oneLine(sql) + params(sql, params) + " → " + n + "행 바뀜 (" + ms(t0) + ")");
 							return n;
 						}
 						return call(target, m, args, null);
@@ -103,7 +114,7 @@ public final class SqlTrace {
 						}
 						if (m.getName().equals("close") && !logged[0]) {
 							logged[0] = true;
-							log.debug("{} → {}행 ({})", oneLine(what), rows[0], elapsed);
+							emit(oneLine(what) + " → " + rows[0] + "행 (" + elapsed + ")");
 						}
 						return r;
 					}
@@ -116,7 +127,7 @@ public final class SqlTrace {
 			return m.invoke(target, args);
 		} catch (InvocationTargetException e) {
 			if (what != null) {
-				log.debug("{} → 실패: {}", oneLine(what), e.getCause().toString());
+				emit(oneLine(what) + " → 실패: " + e.getCause());
 			}
 			throw e.getCause();
 		}

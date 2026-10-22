@@ -17,6 +17,9 @@
    (또는 `application.properties` 의 `#logging.level.jetwork-all=debug` 에서 `#` 를 지우고 재시작).
    HTTP 요청·응답 본문과 걸린 시간, 모든 SQL 과 넣은 값·결과 행 수·걸린 시간, commit/rollback, 소켓·중계 상세가 남고,
    같은 요청의 줄에는 같은 요청 번호(`#12` 등)가 붙습니다. 카드번호는 가려집니다. 로그가 많아지므로 문제를 볼 때만 켭니다.
+   **디버깅 페이지**: `--jetwork.debug-ui=true` 로 켜고 브라우저에서 `http://서버:8090/jetwork/debug` 를 엽니다.
+   서버 상태(DB 커넥션 풀·접속한 단말기·메모리), 최근 요청 200건(본문·응답·SQL), 전체 로그 켜기/끄기, 테스트 요청 보내기가 있습니다.
+   **비밀번호가 없어 주소를 아는 사람은 누구나 볼 수 있으므로** 문제를 볼 때만 켜고, 다 보면 옵션을 빼고 재시작합니다.
 
 2. 실행합니다.
    - 이클립스: `JetworkServerApplication` 우클릭 → Run As → Java Application (또는 Spring Boot App)
