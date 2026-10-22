@@ -44,6 +44,8 @@ public class DBCPConnectionMgr {
 	private static final long MAX_LIFETIME_MILLIS = 20 * 60 * 1000;
 	/** 커넥션을 이 시간 넘게 반납하지 않으면 경고 로그 (반납 누락 찾기용, 동작에는 영향 없음) */
 	private static final long LEAK_DETECTION_MILLIS = 60 * 1000;
+	/** 커넥션이 살아 있는지 확인하는 쿼리 (isValid 를 지원하지 않는 옛 드라이버도 되게) */
+	private static final String TEST_QUERY = "SELECT 1";
 
 	/**
 	 * URL 에 지정이 없을 때 붙이는 접속 옵션.
@@ -144,10 +146,32 @@ public class DBCPConnectionMgr {
 		config.setAutoCommit(true);
 		// 서버 시작 때 DB 가 꺼져 있어도 서버는 뜨고, DB 가 살아나면 그때부터 접속한다 (예전과 같은 동작)
 		config.setInitializationFailTimeout(-1);
+		// 커넥션이 살아 있는지 SELECT 1 로 확인한다.
+		// 지정하지 않으면 Connection.isValid() 를 쓰는데, 옛 MSSQL 드라이버(sqljdbc 2.0/3.0 등)는 이를 지원하지 않아
+		// "isValid() ... 이 작업은 지원되지 않습니다" 오류로 커넥션을 하나도 만들지 못한다.
+		config.setConnectionTestQuery(TEST_QUERY);
 
+		logDriver(DbConfig.getDriver());
 		HikariDataSource ds = new HikariDataSource(config);
 		logger.info("[DB] 커넥션 풀 생성 (HikariCP, 최대 {}개, 최소 유휴 {}개)", max, minIdle);
 		return ds;
+	}
+
+	/**
+	 * 실제로 쓰는 JDBC 드라이버의 jar 와 버전을 로그에 남긴다.
+	 * 이클립스 Build Path 에 옛 드라이버 jar 가 따로 들어 있으면 pom 의 mssql-jdbc 대신 그것이 쓰일 수 있어서, 문제를 찾을 때 본다.
+	 */
+	private static void logDriver(String driverClass) {
+		try {
+			Class<?> c = Class.forName(driverClass);
+			java.security.CodeSource src = c.getProtectionDomain().getCodeSource();
+			Package pkg = c.getPackage();
+			String version = pkg == null ? null : pkg.getImplementationVersion();
+			logger.info("[DB] JDBC 드라이버 {} (버전 {}, 위치 {})", driverClass, version == null ? "알 수 없음" : version,
+					src == null ? "알 수 없음" : src.getLocation());
+		} catch (Throwable e) {
+			logger.warn("[DB] JDBC 드라이버 {} 를 찾을 수 없습니다: {}", driverClass, e.toString());
+		}
 	}
 
 	/** URL 에 DEFAULT_URL_OPTIONS 의 옵션이 없으면 기본값을 붙인다. (URL 에 이미 있으면 그 값을 쓴다) */
