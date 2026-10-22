@@ -8,12 +8,38 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import com.jetwork.model.CardCompanyName;
+
 /** 카드·티머니·캐시비 결제 내역(jw_payment) SQL 모음. 호출하는 쪽이 트랜잭션을 관리한다. */
 final class CardPaymentLedger {
 
 	private static final Logger logger = LoggerFactory.getLogger(CardPaymentLedger.class);
 
 	private CardPaymentLedger() {
+	}
+
+	/**
+	 * 결제 종류. checkFlag 가 Y 면 체크카드, 아니면 신용카드. transit 이 TM/EB 면 티머니/캐시비.
+	 * (KICC 는 R10·R33, 프린트누리는 payType·payTypeTM 을 넘긴다)
+	 */
+	static String payType(String checkFlag, String transit) {
+		if ("TM".equals(transit)) {
+			return "티머니";
+		}
+		if ("EB".equals(transit)) {
+			return "캐시비";
+		}
+		return "Y".equals(checkFlag) ? "체크카드" : "신용카드";
+	}
+
+	/**
+	 * jw_payment.payment_cardName 에 넣을 이름.
+	 * 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다.
+	 * 티머니·캐시비는 카드사명 자리에 "티머니"·"캐시비"를 기록한다 (/postCraditPayment 와 같게. 예전에는 빈칸)
+	 */
+	static String cardName(String payType, String companyCode) {
+		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
+		return isCard ? CardCompanyName.getCardName(companyCode) : payType;
 	}
 
 	/**

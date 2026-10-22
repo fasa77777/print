@@ -11,7 +11,7 @@ import com.jetwork.model.CardCompanyName;
 import com.jetwork.model.PaymentKicc;
 import com.jetwork.model.RecordStatus;
 
-/** 신용·체크카드, 티머니, 캐시비 결제 기록 (/stech/postCraditPayment). */
+/** 신용·체크카드, 티머니, 캐시비 결제 기록 (/jetwork/postCraditPayment). */
 public class CreaditPaymentSQL {
 
 	private static final Logger logger = LoggerFactory.getLogger(CreaditPaymentSQL.class);
@@ -75,35 +75,20 @@ public class CreaditPaymentSQL {
 
 	/** 오늘 같은 승인번호의 기록이 없을 때만 기록한다. */
 	private RecordStatus insertIfNotExistsToday(PaymentKicc payment, String payType, String paymentOk, String cardName) {
-		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
-		Connection conn = dbcp.getConnection();
-		if (conn == null) {
-			return RecordStatus.ERROR;
-		}
-		try {
-			conn.setAutoCommit(false);
-			if (CardPaymentLedger.existsToday(conn, paymentOk)) {
-				logger.info("오늘 같은 승인번호 결제가 이미 있어 기록하지 않음 terminalID={} R09={}", payment.getTerminalID(), paymentOk);
-				conn.commit();
-				return RecordStatus.DUPLICATE;
-			}
-			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
-					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
-					payment.getTotalPages());
-			conn.commit();
-			CardPaymentLedger.markLastPayment(conn, payment.getTerminalID());
-			return RecordStatus.OK;
-		} catch (Exception e) {
-			DbLog.error(logger, "CreaditPaymentSQL", e);
-			CyberMoneyLedger.rollbackQuietly(conn);
-			return RecordStatus.ERROR;
-		} finally {
-			dbcp.freeConnection(conn);
-		}
+		return record(payment, payType, paymentOk, cardName, true);
 	}
 
 	/** 결제 한 건을 바로 기록한다. */
 	private RecordStatus insert(PaymentKicc payment, String payType, String paymentOk, String cardName) {
+		return record(payment, payType, paymentOk, cardName, false);
+	}
+
+	/**
+	 * jw_payment 에 결제 한 건을 기록하고 단말기 last_dt 를 갱신한다.
+	 *
+	 * @param skipIfExistsToday true 면 오늘 같은 승인번호(paymentOk)의 기록이 있을 때 기록하지 않고 DUPLICATE
+	 */
+	private RecordStatus record(PaymentKicc payment, String payType, String paymentOk, String cardName, boolean skipIfExistsToday) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
 		if (conn == null) {
@@ -111,6 +96,11 @@ public class CreaditPaymentSQL {
 		}
 		try {
 			conn.setAutoCommit(false);
+			if (skipIfExistsToday && CardPaymentLedger.existsToday(conn, paymentOk)) {
+				logger.info("오늘 같은 승인번호 결제가 이미 있어 기록하지 않음 terminalID={} R09={}", payment.getTerminalID(), paymentOk);
+				conn.commit();
+				return RecordStatus.DUPLICATE;
+			}
 			CardPaymentLedger.insert(conn, payment.getTerminalID(), payment.getTotalAmount(), payType,
 					payment.getPaperSize(), payment.getColor(), paymentOk, payment.getJobType(), cardName,
 					payment.getTotalPages());
