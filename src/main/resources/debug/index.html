@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jetwork 디버깅</title>
+<style>
+:root {
+	--bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7385; --line: #e3e6ec;
+	--accent: #2f6fde; --ok: #1f9d55; --bad: #d64545; --warn: #c27c0e; --code: #f1f3f6;
+}
+@media (prefers-color-scheme: dark) {
+	:root { --bg: #14171c; --panel: #1c2027; --text: #e6e9ef; --muted: #98a1b3; --line: #2c323c;
+		--accent: #6b9cf0; --ok: #43c07a; --bad: #f07272; --warn: #e3a64a; --code: #252a33; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+	font: 14px/1.5 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line);
+	padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+header h1 { font-size: 16px; margin: 0; }
+header .meta { color: var(--muted); font-size: 12px; }
+header .spacer { flex: 1; }
+nav { display: flex; gap: 4px; }
+nav button { border: 0; background: none; color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+nav button.on { background: var(--code); color: var(--text); font-weight: 600; }
+main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.card h2 { font-size: 13px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+tr.row { cursor: pointer; }
+tr.row:hover { background: var(--code); }
+tr.sel { background: var(--code); }
+.num { font-variant-numeric: tabular-nums; }
+.badge { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.b-ok { color: var(--ok); } .b-bad { color: var(--bad); } .b-warn { color: var(--warn); }
+pre { background: var(--code); padding: 8px 10px; border-radius: 6px; margin: 4px 0 10px; white-space: pre-wrap;
+	overflow-wrap: anywhere; font: 12px/1.5 ui-monospace, Consolas, monospace; max-height: 360px; overflow: auto; }
+button.btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 5px 12px;
+	border-radius: 6px; cursor: pointer; font: inherit; }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.btn:disabled { opacity: .5; cursor: default; }
+.switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.switch input { display: none; }
+.switch .track { width: 34px; height: 20px; border-radius: 10px; background: var(--line); position: relative; transition: .15s; }
+.switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .15s; }
+.switch input:checked + .track { background: var(--ok); }
+.switch input:checked + .track::after { left: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.toolbar input[type=text], select, textarea, input.path { background: var(--panel); color: var(--text);
+	border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+textarea { width: 100%; min-height: 220px; font: 12px/1.5 ui-monospace, Consolas, monospace; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
+.muted { color: var(--muted); }
+.note { font-size: 12px; color: var(--warn); }
+.hidden { display: none; }
+.empty { color: var(--muted); padding: 16px 0; text-align: center; }
+.scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Jetwork 디버깅</h1>
+	<span class="meta" id="hdrMeta">불러오는 중…</span>
+	<span class="spacer"></span>
+	<nav>
+		<button data-tab="status" class="on">서버 상태</button>
+		<button data-tab="requests">최근 요청</button>
+		<button data-tab="test">테스트 요청</button>
+	</nav>
+	<label class="switch" title="재시작 없이 전체 로그(HTTP 본문·SQL)를 로그 파일에 남깁니다">
+		<input type="checkbox" id="traceToggle"><span class="track"></span><span>전체 로그</span>
+	</label>
+</header>
+
+<main>
+	<!-- 서버 상태 -->
+	<section id="tab-status">
+		<div class="grid">
+			<div class="card"><h2>서버</h2><dl class="kv" id="kvServer"></dl></div>
+			<div class="card"><h2>DB</h2><dl class="kv" id="kvDb"></dl>
+				<div class="toolbar" style="margin:10px 0 0"><button class="btn" id="btnDbCheck">DB 연결 확인</button><span id="dbCheckResult" class="muted"></span></div>
+			</div>
+			<div class="card"><h2>메모리·스레드</h2><dl class="kv" id="kvJvm"></dl></div>
+		</div>
+		<div class="card" style="margin-top:12px">
+			<h2>결제 단말기 (소켓 서버에 접속한 단말기)</h2>
+			<div class="scroll"><table>
+				<thead><tr><th>IP</th><th>단말기 ID</th><th>마지막 접속</th><th>가격 정책 요청</th><th>진행 중인 결제</th></tr></thead>
+				<tbody id="terminals"></tbody>
+			</table></div>
+		</div>
+		<p class="muted" style="font-size:12px">3초마다 새로 고칩니다.</p>
+	</section>
+
+	<!-- 최근 요청 -->
+	<section id="tab-requests" class="hidden">
+		<div class="toolbar">
+			<input type="text" id="reqFilter" placeholder="주소·단말기 ID·본문으로 찾기" style="min-width:240px">
+			<label class="switch"><input type="checkbox" id="reqAuto" checked><span class="track"></span><span>자동 새로 고침</span></label>
+			<button class="btn" id="btnReqClear">기록 지우기</button>
+			<span class="muted" id="reqCount"></span>
+		</div>
+		<div class="split">
+			<div class="card scroll" style="padding:0">
+				<table>
+					<thead><tr><th>#</th><th>시각</th><th>주소</th><th>코드</th><th class="num">ms</th><th class="num">SQL</th></tr></thead>
+					<tbody id="reqRows"></tbody>
+				</table>
+				<div class="empty" id="reqEmpty">아직 요청이 없습니다.</div>
+			</div>
+			<div class="card" id="reqDetail"><div class="empty">왼쪽에서 요청을 고르세요.</div></div>
+		</div>
+		<p class="muted" style="font-size:12px">최근 200건만 메모리에 둡니다. 카드번호는 앞 4·뒤 4자리만 보입니다.</p>
+	</section>
+
+	<!-- 테스트 요청 -->
+	<section id="tab-test" class="hidden">
+		<div class="split">
+			<div class="card">
+				<div class="toolbar">
+					<select id="tplSelect"></select>
+					<input class="path" id="tplPath" style="flex:1;min-width:200px">
+				</div>
+				<div class="note" id="tplNote"></div>
+				<textarea id="tplBody" spellcheck="false"></textarea>
+				<div class="toolbar" style="margin-top:8px">
+					<button class="btn primary" id="btnSend">보내기</button>
+					<button class="btn" id="btnReset">예시로 되돌리기</button>
+				</div>
+			</div>
+			<div class="card">
+				<h2>응답</h2>
+				<div id="sendResult" class="empty">아직 보낸 요청이 없습니다.</div>
+			</div>
+		</div>
+	</section>
+</main>
+
+<script>
+(function () {
+	"use strict";
+	var API = location.pathname.replace(/\/$/, "") + "/api";
+	var BASE = location.pathname.replace(/\/debug\/?$/, "");   // /jetwork
+
+	function $(id) { return document.getElementById(id); }
+	function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+	function time(ms) { var d = new Date(ms); return d.toLocaleTimeString("ko-KR", { hour12: false }); }
+	function dateTime(ms) { var d = new Date(ms); return d.toLocaleString("ko-KR", { hour12: false }); }
+	function ago(ms) { var s = Math.round((Date.now() - ms) / 1000); if (s < 60) return s + "초 전"; if (s < 3600) return Math.round(s / 60) + "분 전"; return Math.round(s / 3600) + "시간 전"; }
+	function dur(ms) { var s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + "일 " : "") + h + "시간 " + m + "분"; }
+	function kv(el, rows) { el.innerHTML = rows.map(function (r) { return "<dt>" + esc(r[0]) + "</dt><dd>" + r[1] + "</dd>"; }).join(""); }
+	function pretty(s) { try { return JSON.stringify(JSON.parse(s), null, 2); } catch (e) { return s; } }
+	function statusBadge(code) { var c = code >= 500 ? "b-bad" : code >= 400 ? "b-warn" : "b-ok"; return '<span class="badge ' + c + '">' + code + "</span>"; }
+	function getJson(url, opt) { return fetch(url, opt).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }); }
+	function postJson(url, body) { return getJson(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) }); }
+
+	// ---- 탭 ----
+	var current = "status";
+	document.querySelectorAll("nav button").forEach(function (b) {
+		b.addEventListener("click", function () {
+			current = b.dataset.tab;
+			document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("on", x === b); });
+			["status", "requests", "test"].forEach(function (t) { $("tab-" + t).classList.toggle("hidden", t !== current); });
+			if (current === "requests") loadRequests();
+		});
+	});
+
+	// ---- 서버 상태 ----
+	function loadStatus() {
+		return getJson(API + "/status").then(function (s) {
+			var sv = s.server, db = s.db, j = s.jvm;
+			$("hdrMeta").textContent = "버전 " + sv.version + " · 포트 " + sv.port + " · 실행 " + dur(sv.uptimeMillis);
+			$("traceToggle").checked = sv.traceOn;
+			kv($("kvServer"), [
+				["버전", esc(sv.version)], ["자바", esc(sv.java)], ["시작", esc(dateTime(sv.startedAt))],
+				["실행 시간", esc(dur(sv.uptimeMillis))], ["소켓 서버(10020)", sv.socketServer ? '<span class="b-ok">켜짐</span>' : '<span class="muted">꺼짐</span>'],
+				["중계 서버", esc(sv.relayBaseUrl)], ["전체 로그", sv.traceOn ? '<span class="b-warn">켜짐</span>' : '<span class="muted">꺼짐</span>']
+			]);
+			var busy = /사용 (\d+)/.exec(db.pool || ""), wait = /대기 (\d+)/.exec(db.pool || "");
+			var poolCls = wait && +wait[1] > 0 ? "b-bad" : busy && +busy[1] > 150 ? "b-warn" : "";
+			kv($("kvDb"), [["주소", esc(db.url)], ["계정", esc(db.user)], ["커넥션 풀", '<span class="' + poolCls + '">' + esc(db.pool) + "</span>"]]);
+			kv($("kvJvm"), [["힙 사용", j.heapUsedMB + " MB / 최대 " + j.heapMaxMB + " MB"], ["스레드", j.threads]]);
+			var rows = s.terminals.sort(function (a, b) { return b.lastSeen - a.lastSeen; }).map(function (t) {
+				return "<tr><td>" + esc(t.ip) + "</td><td>" + (esc(t.terminalID) || '<span class="muted">(모름)</span>') + "</td><td>" + esc(ago(t.lastSeen)) +
+					"</td><td>" + (t.policyRequested ? "완료" : '<span class="muted">아직</span>') + "</td><td>" + (t.job ? '<span class="b-warn">' + esc(t.job) + "</span>" : '<span class="muted">없음</span>') + "</td></tr>";
+			});
+			$("terminals").innerHTML = rows.join("") || '<tr><td colspan="5" class="empty">' + (sv.socketServer ? "접속한 단말기가 없습니다." : "소켓 서버가 꺼져 있습니다 (-Dsocket.server=true 로 켭니다).") + "</td></tr>";
+		}).catch(function (e) { $("hdrMeta").textContent = "서버에 연결할 수 없음 (" + e.message + ")"; });
+	}
+	$("btnDbCheck").addEventListener("click", function () {
+		var b = this; b.disabled = true; $("dbCheckResult").textContent = "확인 중…";
+		postJson(API + "/dbcheck").then(function (r) {
+			$("dbCheckResult").innerHTML = (r.ok ? '<span class="b-ok">정상</span>' : '<span class="b-bad">실패</span> ' + esc(r.message)) + (r.elapsedMillis != null ? " (" + r.elapsedMillis + "ms)" : "");
+		}).catch(function (e) { $("dbCheckResult").textContent = e.message; }).then(function () { b.disabled = false; });
+	});
+
+	// ---- 전체 로그 ----
+	$("traceToggle").addEventListener("change", function () {
+		var on = this.checked;
+		postJson(API + "/trace", { on: on }).then(function (r) { $("traceToggle").checked = r.on; loadStatus(); })
+			.catch(function (e) { alert("전체 로그를 바꾸지 못했습니다: " + e.message); $("traceToggle").checked = !on; });
+	});
+
+	// ---- 최근 요청 ----
+	var records = [], lastId = 0, selected = null;
+	function loadRequests() {
+		return getJson(API + "/requests?after=" + lastId).then(function (list) {
+			if (list.length) {
+				records = list.concat(records).slice(0, 200);
+				lastId = records[0].id;
+			}
+			renderRequests();
+		}).catch(function () {});
+	}
+	function matches(r, q) {
+		if (!q) return true;
+		q = q.toLowerCase();
+		return (r.uri + " " + r.requestBody + " " + r.responseBody).toLowerCase().indexOf(q) >= 0;
+	}
+	function renderRequests() {
+		var q = $("reqFilter").value.trim();
+		var shown = records.filter(function (r) { return matches(r, q); });
+		$("reqRows").innerHTML = shown.map(function (r) {
+			return '<tr class="row' + (selected === r.id ? " sel" : "") + '" data-id="' + r.id + '"><td class="num">' + r.id + "</td><td>" + esc(time(r.time)) +
+				"</td><td>" + esc(r.method) + " " + esc(r.uri.replace(BASE, "")) + "</td><td>" + statusBadge(r.status) + '</td><td class="num">' + r.elapsedMillis +
+				'</td><td class="num">' + r.sql.length + "</td></tr>";
+		}).join("");
+		$("reqEmpty").classList.toggle("hidden", shown.length > 0);
+		$("reqCount").textContent = records.length ? records.length + "건" + (q ? " 중 " + shown.length + "건" : "") : "";
+	}
+	function showRecord(id) {
+		var r = records.filter(function (x) { return x.id === id; })[0];
+		if (!r) return;
+		selected = id;
+		renderRequests();
+		$("reqDetail").innerHTML =
+			"<h2>#" + r.id + " · " + esc(dateTime(r.time)) + " · " + esc(r.ip) + "</h2>" +
+			"<div><b>" + esc(r.method) + " " + esc(r.uri) + "</b> → " + statusBadge(r.status) + " " + r.elapsedMillis + "ms</div>" +
+			'<h2 style="margin-top:10px">요청 본문</h2><pre>' + esc(pretty(r.requestBody)) + "</pre>" +
+			"<h2>응답 본문</h2><pre>" + esc(pretty(r.responseBody)) + "</pre>" +
+			"<h2>SQL (" + r.sql.length + (r.sqlDropped ? " + 생략 " + r.sqlDropped : "") + ")</h2><pre>" + (r.sql.map(esc).join("\n\n") || '<span class="muted">없음</span>') + "</pre>";
+	}
+	$("reqRows").addEventListener("click", function (e) { var tr = e.target.closest("tr[data-id]"); if (tr) showRecord(+tr.dataset.id); });
+	$("reqFilter").addEventListener("input", renderRequests);
+	$("btnReqClear").addEventListener("click", function () {
+		postJson(API + "/requests/clear").then(function () { records = []; selected = null; renderRequests(); $("reqDetail").innerHTML = '<div class="empty">왼쪽에서 요청을 고르세요.</div>'; });
+	});
+
+	// ---- 테스트 요청 ----
+	function now14() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; };
+		return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+	var T = "123456", SERIAL = "erwerewrwerwer", CARD = "8E156710";
+	var templates = [
+		{ name: "단말기 확인", path: "/postTerminal", body: function () { return { terminalID: T, serial: SERIAL }; } },
+		{ name: "가격 조회", path: "/printnuri/pricepolicy", body: function () { return { terminalID: T, agentVersion: "PRT_1.11.01" }; },
+			note: "요청에 버전이 있으면 jw_terminal 의 버전 정보를 갱신합니다." },
+		{ name: "사이버머니 잔액 조회", path: "/postCyberMoney", body: function () { return { userID: T, userCard: CARD }; },
+			note: "처음 보는 카드는 0원으로 cybermoney 에 등록됩니다." },
+		{ name: "사이버머니 결제", path: "/postCyberMoneyPayment", write: true, body: function () { return { terminalID: T, userCard: CARD, totalAmount: "100", cyberNo: now14(), paperSize: "A4", color: "false", jobType: "print", totalPages: "1" }; } },
+		{ name: "교세라 사이버머니 결제", path: "/kyocera/postCyberMoneyPayment", write: true, body: function () { return { terminalID: T, userCard: CARD, totalAmount: "100", cyberNo: now14(), paperSize: "A4", color: "2", jobType: "print", totalPages: "1" }; } },
+		{ name: "카드 결제 기록", path: "/postCraditPayment", write: true, body: function () { return { terminalID: T, totalAmount: "100", paperSize: "A4", color: "false", jobType: "print", totalPages: "1", R09: "T" + now14().slice(6), R11: "N", R12: "016", R33: "" }; } },
+		{ name: "티머니 결제 기록", path: "/postCraditPayment", write: true, body: function () { return { terminalID: T, totalAmount: "100", paperSize: "A4", color: "false", jobType: "print", totalPages: "1", R11: "", R33: "TM" }; } },
+		{ name: "KICC 카드 결제 기록", path: "/kicc/postCraditPayment", write: true, body: function () { return { terminalID: T, totalAmount: "100", paperSize: "A4", color: "false", jobType: "Copy", R09: "K" + now14().slice(6), R10: "Y", R12: "016", R33: "" }; } },
+		{ name: "프린트누리 결제 기록", path: "/printnuri/payment", write: true, body: function () { return { terminalID: T, price: "100", payOK: "P" + now14().slice(6), craditName: "031", payType: "N", payTypeTM: "", paperSize: "A4", color: "false", count: "1" }; } },
+		{ name: "프린터 상태", path: "/postPrinter", write: true, body: function () { return { serialnumber: "TEST-SERIAL", devid: "TEST", sitename: "디버깅", total: "0" }; } },
+		{ name: "Xerox 결제", path: "/xerox/xeroxPayment", write: true, body: function () { return { cmd: "pay", terminalID: T, jobType: "Copy", totalAmount: "100", totalPages: "1", color: "false", paperSize: "A4" }; },
+			note: "실제 결제 단말기(10000번 포트)에 결제 요청을 보내고 결과를 최대 120초 기다립니다." }
+	];
+	templates.forEach(function (t, i) { var o = document.createElement("option"); o.value = i; o.textContent = t.name + (t.write ? "  (DB 기록)" : ""); $("tplSelect").appendChild(o); });
+	function loadTemplate() {
+		var t = templates[+$("tplSelect").value];
+		$("tplPath").value = BASE + t.path;
+		$("tplBody").value = JSON.stringify(t.body(), null, 2);
+		$("tplNote").textContent = (t.write ? "실제 DB 에 기록됩니다. " : "") + (t.note || "");
+	}
+	$("tplSelect").addEventListener("change", loadTemplate);
+	$("btnReset").addEventListener("click", loadTemplate);
+	$("btnSend").addEventListener("click", function () {
+		var t = templates[+$("tplSelect").value], body = $("tplBody").value, path = $("tplPath").value.trim();
+		try { JSON.parse(body); } catch (e) { alert("JSON 형식이 아닙니다: " + e.message); return; }
+		if (t.write && !confirm(t.name + " 요청은 실제 DB 에 기록됩니다. 보낼까요?")) return;
+		var b = this; b.disabled = true;
+		var t0 = performance.now();
+		$("sendResult").className = "";
+		$("sendResult").innerHTML = '<div class="muted">보내는 중…</div>';
+		fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: body }).then(function (r) {
+			return r.text().then(function (text) {
+				var ms = Math.round(performance.now() - t0);
+				$("sendResult").innerHTML = "<div>" + statusBadge(r.status) + " " + ms + "ms</div><pre>" + esc(pretty(text)) + "</pre>" +
+					'<button class="btn" id="btnShowRec">최근 요청에서 SQL 보기</button>';
+				$("btnShowRec").addEventListener("click", function () {
+					loadRequests().then(function () {
+						var rec = records.filter(function (x) { return x.uri === path; })[0];
+						document.querySelector('nav button[data-tab="requests"]').click();
+						if (rec) showRecord(rec.id);
+					});
+				});
+			});
+		}).catch(function (e) { $("sendResult").innerHTML = '<span class="b-bad">보내지 못함</span> ' + esc(e.message); })
+			.then(function () { b.disabled = false; });
+	});
+	loadTemplate();
+
+	// ---- 주기적 새로 고침 ----
+	loadStatus();
+	setInterval(function () {
+		if (document.hidden) return;
+		if (current === "status") loadStatus();
+		if (current === "requests" && $("reqAuto").checked) loadRequests();
+	}, 3000);
+})();
+</script>
+</body>
+</html>

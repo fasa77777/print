@@ -79,6 +79,11 @@ public final class TerminalRegistry {
 		return findByIp(lastIp);
 	}
 
+	/** 지금 알고 있는 단말기 상태 전부 (디버깅 페이지용 복사본) */
+	static java.util.List<TerminalState> all() {
+		return new java.util.ArrayList<TerminalState>(BY_IP.values());
+	}
+
 	/** 등록된 단말기 수 */
 	public static int size() {
 		return BY_IP.size();

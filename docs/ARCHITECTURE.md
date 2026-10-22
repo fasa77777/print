@@ -167,7 +167,23 @@ HTTP 만 보려면 `logging.level.jetwork.trace.http=debug`, SQL 만 보려면 `
   DEBUG #9 ... jetwork.trace.http : 응답 200 (6ms): {"userID":"T1",...,"money":"1000","result":"OK"}
   ```
 
-## 10. 남은 문제
+## 10. 디버깅 페이지 (기본 꺼짐)
+
+켜는 방법: `--jetwork.debug-ui=true` (실행 옵션) 또는 `-Djetwork.debug-ui=true`. 켜면 `http://서버:8090/jetwork/debug`.
+꺼져 있으면 DebugController 가 만들어지지 않아 `/jetwork/debug` 는 404 이고, 요청 기록도 하지 않는다.
+비밀번호가 없다. 켜 두면 주소를 아는 사람은 누구나 상태를 보고 테스트 요청(결제 기록 포함)을 보낼 수 있다.
+
+| 탭 | 내용 | 서버 쪽 |
+|---|---|---|
+| 서버 상태 | 버전·실행 시간·소켓 서버·중계 서버, DB 주소(비밀번호 가림)·커넥션 풀, 힙·스레드, 소켓에 접속한 결제 단말기와 진행 중인 결제, DB 연결 확인(SELECT 1) | `GET /jetwork/debug/api/status`, `POST .../api/dbcheck` |
+| 최근 요청 | 최근 200건의 요청·응답 본문(8000바이트까지), 걸린 시간, 그 요청에서 실행한 SQL(요청당 100줄까지). 카드번호 가림 | `GET .../api/requests?after=n`, `POST .../api/requests/clear` (RequestRecorder) |
+| 전체 로그 스위치 | 재시작 없이 `logging.group.jetwork-all` 을 DEBUG / 기본으로. 재시작하면 application.properties 설정으로 돌아감 | `GET/POST .../api/trace` |
+| 테스트 요청 | API 11개의 예시 JSON 을 고쳐서 보냄. DB 에 기록되는 요청은 보내기 전에 확인 창 | 페이지가 `/jetwork/...` 를 직접 호출 |
+
+- 디버깅 페이지 자체의 요청(`/jetwork/debug/...`)은 최근 요청에 남기지 않는다.
+- 최근 요청 기록은 개수·크기에 상한이 있어 계속 켜 두어도 메모리가 늘지 않는다 (16만 건 시험에서 힙 19.2 → 19.4MB).
+
+## 11. 남은 문제
 
 1. Spring Boot 2.3 과 Java 8 은 지원이 끝났다. 운영 서버의 Java 버전을 확인한 뒤 올리는 게 좋다.
 2. 소켓 서버를 켜고 Xerox 결제를 쓸 때, 복사기 에이전트와 결제 단말기의 IP 가 다르면 결제 요청에 `terminalID` 를 넣어야 정확한 단말기로 간다.
