@@ -35,7 +35,7 @@ final class CardPaymentLedger {
 	/**
 	 * jw_payment.payment_cardName 에 넣을 이름.
 	 * - 신용카드: 카드사명. 모르면 '해외카드'
-	 * - 체크카드: 카드사명. 모르면 빈칸 (체크카드는 국내 카드라 해외카드로 보지 않는다. 실서버 jar 와 같음)
+	 * - 체크카드: 카드사명. 모르면 '체크카드' (체크카드는 국내 카드라 해외카드로 보지 않는다)
 	 * - 티머니·캐시비 등: 카드사명 자리에 그 이름 ("티머니"·"캐시비")
 	 */
 	static String cardName(String payType, String companyCode) {
@@ -43,7 +43,8 @@ final class CardPaymentLedger {
 			return CardCompanyName.getCardName(companyCode);
 		}
 		if ("체크카드".equals(payType)) {
-			return CardCompanyName.getName(companyCode == null ? null : companyCode.trim());
+			String name = CardCompanyName.getName(companyCode == null ? null : companyCode.trim());
+			return name.isEmpty() ? "체크카드" : name;
 		}
 		return payType;
 	}

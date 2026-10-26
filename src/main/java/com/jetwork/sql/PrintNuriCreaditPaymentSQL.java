@@ -20,7 +20,7 @@ public class PrintNuriCreaditPaymentSQL {
 	 */
 	public RecordStatus setPayment(PrintNuriPay payment) {
 		String payType = CardPaymentLedger.payType(payment.getPayType(), payment.getPayTypeTM());
-		String cardName = CardPaymentLedger.cardName(payType, payment.getCraditName()); // 카드사명 (모르면 신용카드는 해외카드, 체크카드는 빈칸), 티머니·캐시비는 그 이름
+		String cardName = CardPaymentLedger.cardName(payType, payment.getCraditName()); // 카드사명 (모르면 신용카드는 해외카드, 체크카드는 체크카드), 티머니·캐시비는 그 이름
 
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
