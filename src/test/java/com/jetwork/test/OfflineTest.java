@@ -176,7 +176,16 @@ public class OfflineTest {
 		check("같은 승인번호 다시 → 기록 안 함", payments() == before + 1);
 		card("/postCraditPayment", "R09", "A200", "R11", "Y", "R12", "999", "R33", "");
 		p = FakeDbDriver.find("jw_payment", "payment_ok", "A200");
-		check("모르는 카드사 코드 → 체크카드·해외카드", p != null && "체크카드".equals(p.get("payment_type")) && "해외카드".equals(p.get("payment_cardName")));
+		check("모르는 카드사 코드 체크카드 → 카드사명 체크카드 (해외카드 아님)", p != null && "체크카드".equals(p.get("payment_type")) && "체크카드".equals(p.get("payment_cardName")));
+		card("/postCraditPayment", "R09", "A201", "R11", "N", "R12", "999", "R33", "");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "A201");
+		check("모르는 카드사 코드 신용카드 → 해외카드", p != null && "신용카드".equals(p.get("payment_type")) && "해외카드".equals(p.get("payment_cardName")));
+		card("/postCraditPayment", "R09", "A202", "R11", "N", "R12", "", "R33", "");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "A202");
+		check("카드사 코드 없는 신용카드 → 해외카드", p != null && "해외카드".equals(p.get("payment_cardName")));
+		card("/kicc/postCraditPayment", "R09", "K7", "R10", "Y", "R12", "", "R33", "");
+		p = FakeDbDriver.find("jw_payment", "payment_ok", "K7");
+		check("KICC 카드사 코드 없는 체크카드 → 카드사명 체크카드", p != null && "체크카드".equals(p.get("payment_type")) && "체크카드".equals(p.get("payment_cardName")));
 		card("/postCraditPayment", "R11", "", "R33", "TM");
 		card("/postCraditPayment", "R11", "", "R33", "EB");
 		card("/postCraditPayment", "R11", "", "R33", "RP");

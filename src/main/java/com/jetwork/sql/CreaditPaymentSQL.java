@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jetwork.bin.ConnectionPool;
-import com.jetwork.model.CardCompanyName;
 import com.jetwork.model.PaymentKicc;
 import com.jetwork.model.RecordStatus;
 
@@ -31,7 +30,7 @@ public class CreaditPaymentSQL {
 	/**
 	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
 	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
-	 *   카드사명을 모르면 해외카드
+	 *   카드사명을 모르면 신용카드는 해외카드, 체크카드는 체크카드
 	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 그 밖의 값이면 교통카드로 기록. R33 이 비었으면 기록하지 않음 (실서버 jar 와 같음)
 	 * 기록하면 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다. (중복이라 기록하지 않으면 갱신하지 않음)
 	 */
@@ -43,7 +42,7 @@ public class CreaditPaymentSQL {
 			String payType = "Y".equals(r11) ? "체크카드" : "신용카드";
 
 			String approvalNo = CardPaymentLedger.trim(payment.getR09());
-			String cardName = CardCompanyName.getCardName(payment.getR12());
+			String cardName = CardPaymentLedger.cardName(payType, payment.getR12()); // 신용카드만 모르면 해외카드
 			if (approvalNo.isEmpty()) {
 				// 승인번호가 없으면 중복을 가릴 수 없으므로 그대로 기록한다.
 				// (예전에는 빈 승인번호끼리 중복으로 보아 하루 첫 건 말고는 버려졌다)

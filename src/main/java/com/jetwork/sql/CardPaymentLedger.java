@@ -34,12 +34,19 @@ final class CardPaymentLedger {
 
 	/**
 	 * jw_payment.payment_cardName 에 넣을 이름.
-	 * 카드 결제는 카드사명을 모르면 '해외카드'로 기록한다.
-	 * 티머니·캐시비는 카드사명 자리에 "티머니"·"캐시비"를 기록한다 (/postCraditPayment 와 같게. 예전에는 빈칸)
+	 * - 신용카드: 카드사명. 모르면 '해외카드'
+	 * - 체크카드: 카드사명. 모르면 '체크카드' (체크카드는 국내 카드라 해외카드로 보지 않는다)
+	 * - 티머니·캐시비 등: 카드사명 자리에 그 이름 ("티머니"·"캐시비")
 	 */
 	static String cardName(String payType, String companyCode) {
-		boolean isCard = "체크카드".equals(payType) || "신용카드".equals(payType);
-		return isCard ? CardCompanyName.getCardName(companyCode) : payType;
+		if ("신용카드".equals(payType)) {
+			return CardCompanyName.getCardName(companyCode);
+		}
+		if ("체크카드".equals(payType)) {
+			String name = CardCompanyName.getName(companyCode == null ? null : companyCode.trim());
+			return name.isEmpty() ? "체크카드" : name;
+		}
+		return payType;
 	}
 
 	/**
