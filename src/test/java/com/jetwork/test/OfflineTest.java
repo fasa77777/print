@@ -185,7 +185,11 @@ public class OfflineTest {
 		card("/postCraditPayment", "R09", "", "R11", "N", "R12", "016", "R33", "");
 		card("/postCraditPayment", "R09", "", "R11", "N", "R12", "016", "R33", "");
 		check("승인번호 빈 카드 결제 2건 → 2건 모두 기록", payments() == b2 + 2);
+		int b3 = payments();
 		eq("R11·R33 모두 없음 → 오류 없이 OK", card("/postCraditPayment", "R11", ""), "result", "OK");
+		card("/postCraditPayment", "R11", "", "R33", "");
+		card("/postCraditPayment", "R11", "", "R33", "  ");
+		check("카드·교통카드 정보 없음 (사이버머니 결제 뒤 요청) → 기록하지 않음", payments() == b3);
 		eq("KICC 국민 → OK", card("/kicc/postCraditPayment", "R09", "K9", "R10", "Y", "R12", "016", "R33", ""), "result", "OK");
 		p = FakeDbDriver.find("jw_payment", "payment_ok", "K9");
 		check("KICC 체크카드·국민 카드사로 기록", p != null && "체크카드".equals(p.get("payment_type")) && "국민 카드사".equals(p.get("payment_cardName")));

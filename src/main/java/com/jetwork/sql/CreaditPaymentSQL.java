@@ -32,7 +32,7 @@ public class CreaditPaymentSQL {
 	 * 결제 한 건을 jw_payment 에 기록하고 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다.
 	 * - R11 이 Y/N: 체크/신용카드. 오늘 같은 승인번호(R09)가 없을 때만 기록 (승인번호가 비면 그대로 기록),
 	 *   카드사명을 모르면 해외카드
-	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 나머지는 교통카드로 기록
+	 * - 그 외: R33 이 TM 이면 티머니, EB 면 캐시비, 그 밖의 값이면 교통카드로 기록. R33 이 비었으면 기록하지 않음 (실서버 jar 와 같음)
 	 * 기록하면 단말기의 마지막 결제 시간(jw_terminal.last_dt)을 갱신한다. (중복이라 기록하지 않으면 갱신하지 않음)
 	 */
 	public RecordStatus setPayment(PaymentKicc payment) {
@@ -65,10 +65,17 @@ public class CreaditPaymentSQL {
 				return insert(payment, "티머니", now, "티머니");
 			} else if ("EB".equals(r33)) {
 				return insert(payment, "캐시비", now, "캐시비");
-			} else {
-				// 티머니·캐시비가 아닌 교통카드(레일플러스 등)는 예전에는 기록 없이 버려졌다.
+			} else if (!r33.isEmpty()) {
+				// R33 에 티머니·캐시비가 아닌 교통카드 구분 값(레일플러스 등)이 있을 때만 '교통카드'로 기록한다.
 				logger.info("기타 교통카드 결제 terminalID={} R33={}", payment.getTerminalID(), r33);
 				return insert(payment, "교통카드", now, "교통카드");
+			} else {
+				// 카드(R11)도 교통카드(R33)도 아니면 기록하지 않는다 (실서버 jar 와 같음).
+				// 사이버머니 결제 뒤 에이전트가 카드 정보 없이 이 API 를 한 번 더 부르는데,
+				// 예전에 이것을 '교통카드'로 기록해서 사이버머니 결제가 교통카드로 한 번 더 등록됐다.
+				logger.info("카드·교통카드 정보 없는 결제 기록 요청 → 기록하지 않음 terminalID={} amount={} R11=[{}] R33=[{}]",
+						payment.getTerminalID(), payment.getTotalAmount(), r11, payment.getR33());
+				return RecordStatus.OK;
 			}
 		}
 	}
