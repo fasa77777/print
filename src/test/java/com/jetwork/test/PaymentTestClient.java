@@ -126,7 +126,7 @@ public class PaymentTestClient {
 		// 3. 카드·교통카드 결제 기록 (응답은 항상 OK, 기록 내용은 jw_payment 에서 확인)
 		section("3. 카드·교통카드 결제 기록");
 		expect(post("신용카드 (신한 029)", "/postCraditPayment", card("R09", newNo(), "R11", "N", "R12", "029", "R33", "")), "result", "OK");
-		expect(post("체크카드 (카드사 코드 없음 → 해외카드)", "/postCraditPayment", card("R09", newNo(), "R11", "Y", "R12", "", "R33", "")), "result", "OK");
+		expect(post("신용카드 (카드사 코드 없음 → 해외카드)", "/postCraditPayment", card("R09", newNo(), "R11", "N", "R12", "", "R33", "")), "result", "OK");
 		expect(post("티머니", "/postCraditPayment", card("R11", "", "R33", "TM")), "result", "OK");
 		expect(post("캐시비", "/postCraditPayment", card("R11", "", "R33", "EB")), "result", "OK");
 		expect(post("기타 교통카드 → 교통카드", "/postCraditPayment", card("R11", "", "R33", "RP")), "result", "OK");

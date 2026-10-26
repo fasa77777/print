@@ -21,7 +21,7 @@ public class KiccCreaditPaymentSQL {
 	public RecordStatus setPayment(PaymentCreaditKicc payment) {
 		// R33 은 "TM " 처럼 공백이 붙어 와도 구분되게 공백을 뗀다
 		String payType = CardPaymentLedger.payType(payment.getR10(), CardPaymentLedger.trim(payment.getR33()));
-		String cardName = CardPaymentLedger.cardName(payType, payment.getR12()); // 카드사명 (모르면 해외카드), 티머니·캐시비는 그 이름
+		String cardName = CardPaymentLedger.cardName(payType, payment.getR12()); // 카드사명 (모르면 신용카드는 해외카드, 체크카드는 빈칸), 티머니·캐시비는 그 이름
 
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
