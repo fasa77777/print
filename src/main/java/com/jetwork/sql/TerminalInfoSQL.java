@@ -44,7 +44,9 @@ public class TerminalInfoSQL {
 	}
 
 	/**
-	 * 등록 확인(단말기 ID + 시리얼)에 성공한 시각을 jw_terminal.license_dt 에 기록한다.
+	 * 라이센스 날짜 등록: 단말기에서 신규 요청(/jetwork/postTerminal)이 와서
+	 * 등록 확인(단말기 ID + 시리얼)에 성공하면 그 시각을 jw_terminal.license_dt 에 기록한다.
+	 * serial 은 단말기 시리얼이다.
 	 * 기록에 실패해도(컬럼이 없는 DB 등) 단말기 확인 결과에는 영향을 주지 않고 경고만 남긴다.
 	 */
 	static void markLicenseChecked(Connection conn, String terminalID, String serial) {
@@ -69,6 +71,7 @@ public class TerminalInfoSQL {
 		try {
 			conn.setAutoCommit(false);
 
+			// 등록 확인: 단말기 ID 와 시리얼(단말기 시리얼)이 jw_terminal 에 함께 등록되어 있는지
 			try (PreparedStatement ps = conn.prepareStatement(
 					"SELECT 1 FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
 				ps.setString(1, terminal.getTerminalID());
@@ -80,6 +83,7 @@ public class TerminalInfoSQL {
 
 			if (registered) {
 				logger.debug("등록된 단말기 {}", terminal.getTerminalID());
+				// 단말기에서 신규 요청 시 라이센스 날짜 등록 (serial = 단말기 시리얼)
 				markLicenseChecked(conn, terminal.getTerminalID(), terminal.getSerial());
 				updateVersions(conn, terminal.getTerminalID(), terminal.getAgentVersion(), terminal.getTerminalVersion());
 			}
