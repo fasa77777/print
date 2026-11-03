@@ -62,7 +62,7 @@ public class FakeDbDriver implements Driver {
 	public static volatile boolean logging = true;
 
 	static {
-		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt"));
+		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt", "license_dt"));
 		COLS.put("jw_franchise", Arrays.asList("fran_id", "fran_name"));
 		COLS.put("cybermoney", Arrays.asList("cardNumber", "cyberMoney", "fran_id", "reg_date"));
 		COLS.put("jw_paper", Arrays.asList("terminalID", "paper_colorYN", "paper_price", "paper_size"));
