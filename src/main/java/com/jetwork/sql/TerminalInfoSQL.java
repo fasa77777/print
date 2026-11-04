@@ -43,20 +43,29 @@ public class TerminalInfoSQL {
 		}
 	}
 
+	/** license_dt 형식: 오늘 날짜 yyyyMMdd (varchar 8자리, 예: 20261104). 한국 시간 기준 */
+	static String licenseDate() {
+		java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyyMMdd");
+		f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
+		return f.format(new java.util.Date());
+	}
+
 	/**
 	 * 라이센스 날짜 등록: 단말기에서 신규 요청(/jetwork/postTerminal)이 와서
-	 * 등록 확인(단말기 ID + 시리얼)에 성공하면 그 시각을 jw_terminal.license_dt 에 기록한다.
+	 * 등록 확인(단말기 ID + 시리얼)에 성공하면 오늘 날짜(yyyyMMdd 문자열)를 jw_terminal.license_dt 에 기록한다.
 	 * serial 은 단말기 시리얼이다.
 	 * 기록하면 INFO 로그를 남긴다. 기록에 실패해도(컬럼이 없는 DB 등) 단말기 확인 결과에는 영향을 주지 않고 경고(WARN)만 남긴다.
 	 */
 	static void markLicenseChecked(Connection conn, String terminalID, String serial) {
+		String today = licenseDate();
 		try (PreparedStatement ps = conn.prepareStatement(
-				"UPDATE [dbo].[jw_terminal] SET [license_dt] = getdate() WHERE [terminal_id] = ? AND [serial] = ?")) {
-			ps.setString(1, terminalID);
-			ps.setString(2, serial);
+				"UPDATE [dbo].[jw_terminal] SET [license_dt] = ? WHERE [terminal_id] = ? AND [serial] = ?")) {
+			ps.setString(1, today);
+			ps.setString(2, terminalID);
+			ps.setString(3, serial);
 			int rows = ps.executeUpdate();
 			if (rows > 0) {
-				logger.info("라이센스 날짜 등록 (license_dt = 현재 시각) terminalID={} serial={}", terminalID, serial);
+				logger.info("라이센스 날짜 등록 (license_dt = {}) terminalID={} serial={}", today, terminalID, serial);
 			} else {
 				logger.warn("라이센스 날짜 등록 대상 없음 (license_dt 안 바뀜) terminalID={} serial={}", terminalID, serial);
 			}
@@ -65,7 +74,7 @@ public class TerminalInfoSQL {
 		}
 	}
 
-	/** 단말기 ID 와 시리얼이 등록되어 있으면 license_dt 를 지금으로 바꾸고, 버전 정보(agent_version, terminalVersion)를 갱신한다. 버전은 값이 왔을 때만 바꾼다. */
+	/** 단말기 ID 와 시리얼이 등록되어 있으면 license_dt 를 오늘 날짜(yyyyMMdd)로 바꾸고, 버전 정보(agent_version, terminalVersion)를 갱신한다. 버전은 값이 왔을 때만 바꾼다. */
 	public Status setTerminal(Terminal terminal) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
