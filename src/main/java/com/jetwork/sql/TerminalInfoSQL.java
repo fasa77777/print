@@ -47,16 +47,21 @@ public class TerminalInfoSQL {
 	 * 라이센스 날짜 등록: 단말기에서 신규 요청(/jetwork/postTerminal)이 와서
 	 * 등록 확인(단말기 ID + 시리얼)에 성공하면 그 시각을 jw_terminal.license_dt 에 기록한다.
 	 * serial 은 단말기 시리얼이다.
-	 * 기록에 실패해도(컬럼이 없는 DB 등) 단말기 확인 결과에는 영향을 주지 않고 경고만 남긴다.
+	 * 기록하면 INFO 로그를 남긴다. 기록에 실패해도(컬럼이 없는 DB 등) 단말기 확인 결과에는 영향을 주지 않고 경고(WARN)만 남긴다.
 	 */
 	static void markLicenseChecked(Connection conn, String terminalID, String serial) {
 		try (PreparedStatement ps = conn.prepareStatement(
 				"UPDATE [dbo].[jw_terminal] SET [license_dt] = getdate() WHERE [terminal_id] = ? AND [serial] = ?")) {
 			ps.setString(1, terminalID);
 			ps.setString(2, serial);
-			ps.executeUpdate();
+			int rows = ps.executeUpdate();
+			if (rows > 0) {
+				logger.info("라이센스 날짜 등록 (license_dt = 현재 시각) terminalID={} serial={}", terminalID, serial);
+			} else {
+				logger.warn("라이센스 날짜 등록 대상 없음 (license_dt 안 바뀜) terminalID={} serial={}", terminalID, serial);
+			}
 		} catch (java.sql.SQLException e) {
-			logger.warn("license_dt 기록 실패 terminalID={} : {}", terminalID, e.getMessage());
+			logger.warn("라이센스 날짜 등록 실패 (license_dt) terminalID={} serial={} : {}", terminalID, serial, e.getMessage());
 		}
 	}
 
