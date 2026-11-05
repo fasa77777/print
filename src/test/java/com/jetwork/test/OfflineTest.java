@@ -111,10 +111,7 @@ public class OfflineTest {
 		Map<String, String> r = post("/postTerminal", "terminalID", "T1", "serial", "S1", "agentVersion", "A1", "terminalVersion", "TV1");
 		eq("등록 단말기 → OK", r, "result", "OK");
 		Map<String, String> t = FakeDbDriver.find("jw_terminal", "terminal_id", "T1");
-		java.text.SimpleDateFormat ymd = new java.text.SimpleDateFormat("yyyyMMdd");
-		ymd.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
-		String today = ymd.format(new java.util.Date());
-		check("등록 확인 성공 → license_dt 에 오늘 날짜 yyyyMMdd (" + t.get("license_dt") + ")", today.equals(t.get("license_dt")));
+		check("등록 확인 성공 → license_dt 에 현재 시각", "<now>".equals(t.get("license_dt")));
 		FakeDbDriver.addRow("jw_terminal", "terminal_id", "T3", "serial", "S3", "fran_id", "F1");
 		eq("T3 시리얼 틀림 → FALSE", post("/postTerminal", "terminalID", "T3", "serial", "WRONG"), "result", "FALSE");
 		check("등록 확인 실패 → license_dt 그대로 (비어 있음)", FakeDbDriver.find("jw_terminal", "terminal_id", "T3").get("license_dt") == null);
