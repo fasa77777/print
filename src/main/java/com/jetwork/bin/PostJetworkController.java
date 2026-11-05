@@ -90,6 +90,10 @@ public class PostJetworkController {
     	case REGISTERED:
     		pr.setResult("OK");
     		break;
+    	case EXPIRED:
+    		// 사용 기간(jw_terminal.expireDt)이 지난 단말기 (로그는 TerminalInfoSQL 에서)
+    		pr.setResult("FALSE");
+    		break;
     	case NOT_REGISTERED:
     		logger.warn("미등록 단말기 접속 terminalID={} serial={} agentVersion={}",
     				terminal.getTerminalID(), terminal.getSerial(), terminal.getAgentVersion());

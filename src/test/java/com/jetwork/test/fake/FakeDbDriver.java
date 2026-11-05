@@ -62,7 +62,7 @@ public class FakeDbDriver implements Driver {
 	public static volatile boolean logging = true;
 
 	static {
-		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt", "license_dt"));
+		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt", "license_dt", "expireDt"));
 		COLS.put("jw_franchise", Arrays.asList("fran_id", "fran_name"));
 		COLS.put("cybermoney", Arrays.asList("cardNumber", "cyberMoney", "fran_id", "reg_date"));
 		COLS.put("jw_paper", Arrays.asList("terminalID", "paper_colorYN", "paper_price", "paper_size"));
@@ -410,7 +410,7 @@ public class FakeDbDriver implements Driver {
 					return proxy(ResultSetMetaData.class, new InvocationHandler() {
 						public Object invoke(Object o2, Method m2, Object[] a2) {
 							if (m2.getName().equals("getColumnCount")) return cols.size();
-							if (m2.getName().equals("getColumnName")) return cols.get((Integer) a2[0] - 1);
+							if (m2.getName().equals("getColumnName") || m2.getName().equals("getColumnLabel")) return cols.get((Integer) a2[0] - 1);
 							return common(o2, m2, a2);
 						}
 					});

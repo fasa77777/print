@@ -31,7 +31,7 @@ jar 와 다르게 동작하는 부분은 "5. 실서버 jar 와 다른 점"에 �
 
 | 주소 | 하는 일 | 응답 |
 |---|---|---|
-| `/postTerminal` | 단말기 ID+시리얼 확인. 확인되면 license_dt·update 를 지금으로, agent_version·terminalVersion 은 값이 왔을 때만 갱신 | OK / FALSE (DB 오류도 FALSE) |
+| `/postTerminal` | 단말기 ID+시리얼 확인, 사용 기간 확인(오늘이 expireDt 보다 이후 날짜면 실패, 당일까지 OK, 비었으면 제한 없음). 확인되면 license_dt·update 를 지금으로, agent_version·terminalVersion 은 값이 왔을 때만 갱신 | OK / FALSE (미등록·기간 만료·DB 오류) |
 | `/postCyberMoney` | 사이버머니 잔액 조회. 처음 보는 카드는 0원 등록 | result=OK, money |
 | `/postCyberMoneyPayment` | 사이버머니 결제 | 아래 표 |
 | `/kyocera/postCyberMoneyPayment` | 교세라 사이버머니 결제 (색상 1/2 → true/false) | 아래 표 (balance 는 0) |
