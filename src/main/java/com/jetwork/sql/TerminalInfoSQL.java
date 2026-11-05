@@ -20,6 +20,8 @@ public class TerminalInfoSQL {
 		REGISTERED,
 		/** 등록되지 않은 단말기 (또는 시리얼 불일치) */
 		NOT_REGISTERED,
+		/** 등록은 되어 있지만 사용하지 않는 단말기 (USE_YN 이 Y 가 아님) */
+		NOT_IN_USE,
 		/** 등록은 되어 있지만 사용 기간(expireDt)이 지난 단말기 */
 		EXPIRED,
 		/** DB 오류로 확인하지 못함 */
@@ -83,17 +85,57 @@ public class TerminalInfoSQL {
 	 */
 	private static String expireDt(ResultSet rs, String terminalID) {
 		try {
-			java.sql.ResultSetMetaData meta = rs.getMetaData();
-			for (int i = 1; i <= meta.getColumnCount(); i++) {
-				if (EXPIRE_COLUMN.equalsIgnoreCase(meta.getColumnLabel(i)) || EXPIRE_COLUMN.equalsIgnoreCase(meta.getColumnName(i))) {
-					return rs.getString(i);
-				}
+			int i = columnIndex(rs, EXPIRE_COLUMN);
+			if (i > 0) {
+				return rs.getString(i);
 			}
 			logger.warn("jw_terminal 에 {} 컬럼이 없어 사용 기간을 확인하지 않음 terminalID={}", EXPIRE_COLUMN, terminalID);
 		} catch (java.sql.SQLException e) {
 			logger.warn("{} 를 읽지 못해 사용 기간을 확인하지 않음 terminalID={} : {}", EXPIRE_COLUMN, terminalID, e.getMessage());
 		}
 		return null;
+	}
+
+	/** 사용 여부 컬럼 이름. 값이 Y 인 단말기만 사용할 수 있다 */
+	static final String USE_COLUMN = "USE_YN";
+
+	/**
+	 * 단말기를 사용할 수 있는지: USE_YN 이 Y 면 true, 그 밖의 값(N, 빈 값, NULL)은 false.
+	 * USE_YN 컬럼이 없는 DB 면 확인하지 않고 true (경고 로그).
+	 */
+	static boolean isInUse(ResultSet rs, String terminalID) throws java.sql.SQLException {
+		int i = columnIndex(rs, USE_COLUMN);
+		if (i < 0) {
+			logger.warn("jw_terminal 에 {} 컬럼이 없어 사용 여부를 확인하지 않음 terminalID={}", USE_COLUMN, terminalID);
+			return true;
+		}
+		return isUseY(rs.getString(i));
+	}
+
+	/** 로그용 USE_YN 값 (컬럼이 없거나 읽지 못하면 "-") */
+	private static String useYnText(ResultSet rs) {
+		try {
+			int i = columnIndex(rs, USE_COLUMN);
+			return i < 0 ? "-" : String.valueOf(rs.getString(i));
+		} catch (java.sql.SQLException e) {
+			return "-";
+		}
+	}
+
+	/** USE_YN 값이 Y 인지 (앞뒤 공백은 무시) */
+	static boolean isUseY(String useYn) {
+		return useYn != null && "Y".equals(useYn.trim());
+	}
+
+	/** 조회 결과에서 컬럼 위치(1부터). 없으면 -1. 대소문자는 가리지 않는다 */
+	private static int columnIndex(ResultSet rs, String column) throws java.sql.SQLException {
+		java.sql.ResultSetMetaData meta = rs.getMetaData();
+		for (int i = 1; i <= meta.getColumnCount(); i++) {
+			if (column.equalsIgnoreCase(meta.getColumnLabel(i)) || column.equalsIgnoreCase(meta.getColumnName(i))) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	/**
@@ -116,7 +158,7 @@ public class TerminalInfoSQL {
 
 	/**
 	 * 단말기 ID 와 시리얼이 등록되어 있고 사용 기간(expireDt)이 지나지 않았으면 license_dt 를 지금으로 바꾸고, 버전 정보(agent_version, terminalVersion)를 갱신한다. 버전은 값이 왔을 때만 바꾼다.
-	 * 사용 기간이 지났으면 아무것도 바꾸지 않고 EXPIRED.
+	 * USE_YN 이 Y 가 아니면 NOT_IN_USE, 사용 기간이 지났으면 EXPIRED (둘 다 아무것도 바꾸지 않음).
 	 */
 	public Status setTerminal(Terminal terminal) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
@@ -130,6 +172,8 @@ public class TerminalInfoSQL {
 
 			// 등록 확인: 단말기 ID 와 시리얼(단말기 시리얼)이 jw_terminal 에 함께 등록되어 있는지
 			String expireDt = null;
+			boolean inUse = true;
+			String useYn = null;
 			try (PreparedStatement ps = conn.prepareStatement(
 					"SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
 				ps.setString(1, terminal.getTerminalID());
@@ -137,9 +181,19 @@ public class TerminalInfoSQL {
 				try (ResultSet rs = ps.executeQuery()) {
 					registered = rs.next();
 					if (registered) {
+						inUse = isInUse(rs, terminal.getTerminalID());
+						useYn = useYnText(rs);
 						expireDt = expireDt(rs, terminal.getTerminalID());
 					}
 				}
+			}
+
+			// 사용 여부 확인: USE_YN 이 Y 인 단말기만 사용 가능 (N, 빈 값, NULL 은 실패)
+			if (registered && !inUse) {
+				logger.warn("사용하지 않는 단말기 (USE_YN={}) terminalID={} serial={}", useYn, terminal.getTerminalID(),
+						terminal.getSerial());
+				conn.commit();
+				return Status.NOT_IN_USE;
 			}
 
 			// 사용 기간 확인: 오늘이 expireDt 보다 이후 날짜면 실패 (expireDt 당일까지는 사용 가능)
