@@ -20,6 +20,8 @@ public class TerminalInfoSQL {
 		REGISTERED,
 		/** 등록되지 않은 단말기 (또는 시리얼 불일치) */
 		NOT_REGISTERED,
+		/** 등록은 되어 있지만 사용 기간(expireDt)이 지난 단말기 */
+		EXPIRED,
 		/** DB 오류로 확인하지 못함 */
 		ERROR
 	}
@@ -65,7 +67,57 @@ public class TerminalInfoSQL {
 		}
 	}
 
-	/** 단말기 ID 와 시리얼이 등록되어 있으면 license_dt 를 지금으로 바꾸고, 버전 정보(agent_version, terminalVersion)를 갱신한다. 버전은 값이 왔을 때만 바꾼다. */
+	/** expireDt 컬럼 이름 */
+	static final String EXPIRE_COLUMN = "expireDt";
+
+	/** 오늘 날짜 yyyyMMdd (한국 시간) */
+	static String today() {
+		java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyyMMdd");
+		f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
+		return f.format(new java.util.Date());
+	}
+
+	/**
+	 * 조회한 행의 expireDt 값. 컬럼이 없거나 읽지 못하면 null (기간 제한 없음으로 본다).
+	 * 컬럼 형식이 datetime 이면 "2026-12-31 00:00:00.0", varchar 면 "20261231" 처럼 온다.
+	 */
+	private static String expireDt(ResultSet rs, String terminalID) {
+		try {
+			java.sql.ResultSetMetaData meta = rs.getMetaData();
+			for (int i = 1; i <= meta.getColumnCount(); i++) {
+				if (EXPIRE_COLUMN.equalsIgnoreCase(meta.getColumnLabel(i)) || EXPIRE_COLUMN.equalsIgnoreCase(meta.getColumnName(i))) {
+					return rs.getString(i);
+				}
+			}
+			logger.warn("jw_terminal 에 {} 컬럼이 없어 사용 기간을 확인하지 않음 terminalID={}", EXPIRE_COLUMN, terminalID);
+		} catch (java.sql.SQLException e) {
+			logger.warn("{} 를 읽지 못해 사용 기간을 확인하지 않음 terminalID={} : {}", EXPIRE_COLUMN, terminalID, e.getMessage());
+		}
+		return null;
+	}
+
+	/**
+	 * 오늘(today, yyyyMMdd)이 expireDt 보다 이후 날짜인지. 날짜(일) 단위로 비교한다.
+	 * expireDt 가 비었거나 날짜로 읽을 수 없으면 false (기간 제한 없음).
+	 */
+	static boolean isExpired(String expireDt, String today) {
+		if (expireDt == null) {
+			return false;
+		}
+		String digits = expireDt.replaceAll("[^0-9]", "");
+		if (digits.length() < 8) {
+			if (!expireDt.trim().isEmpty()) {
+				logger.warn("{} 값을 날짜로 읽을 수 없어 사용 기간을 확인하지 않음: [{}]", EXPIRE_COLUMN, expireDt);
+			}
+			return false;
+		}
+		return today.compareTo(digits.substring(0, 8)) > 0;
+	}
+
+	/**
+	 * 단말기 ID 와 시리얼이 등록되어 있고 사용 기간(expireDt)이 지나지 않았으면 license_dt 를 지금으로 바꾸고, 버전 정보(agent_version, terminalVersion)를 갱신한다. 버전은 값이 왔을 때만 바꾼다.
+	 * 사용 기간이 지났으면 아무것도 바꾸지 않고 EXPIRED.
+	 */
 	public Status setTerminal(Terminal terminal) {
 		DBCPConnectionMgr dbcp = ConnectionPool.getInst();
 		Connection conn = dbcp.getConnection();
@@ -77,13 +129,25 @@ public class TerminalInfoSQL {
 			conn.setAutoCommit(false);
 
 			// 등록 확인: 단말기 ID 와 시리얼(단말기 시리얼)이 jw_terminal 에 함께 등록되어 있는지
+			String expireDt = null;
 			try (PreparedStatement ps = conn.prepareStatement(
-					"SELECT 1 FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
+					"SELECT * FROM [dbo].[jw_terminal] WHERE [terminal_id] = ? AND [serial] = ?")) {
 				ps.setString(1, terminal.getTerminalID());
 				ps.setString(2, terminal.getSerial());
 				try (ResultSet rs = ps.executeQuery()) {
 					registered = rs.next();
+					if (registered) {
+						expireDt = expireDt(rs, terminal.getTerminalID());
+					}
 				}
+			}
+
+			// 사용 기간 확인: 오늘이 expireDt 보다 이후 날짜면 실패 (expireDt 당일까지는 사용 가능)
+			if (registered && isExpired(expireDt, today())) {
+				logger.warn("단말기 사용 기간 만료 terminalID={} serial={} expireDt={} 오늘={}", terminal.getTerminalID(),
+						terminal.getSerial(), expireDt, today());
+				conn.commit();
+				return Status.EXPIRED;
 			}
 
 			if (registered) {
