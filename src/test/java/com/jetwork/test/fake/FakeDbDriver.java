@@ -62,7 +62,7 @@ public class FakeDbDriver implements Driver {
 	public static volatile boolean logging = true;
 
 	static {
-		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt", "license_dt", "expireDt"));
+		COLS.put("jw_terminal", Arrays.asList("terminal_id", "serial", "fran_id", "agent_version", "update", "terminalVersion", "last_dt", "license_dt", "expireDt", "USE_YN"));
 		COLS.put("jw_franchise", Arrays.asList("fran_id", "fran_name"));
 		COLS.put("cybermoney", Arrays.asList("cardNumber", "cyberMoney", "fran_id", "reg_date"));
 		COLS.put("jw_paper", Arrays.asList("terminalID", "paper_colorYN", "paper_price", "paper_size"));
@@ -79,7 +79,7 @@ public class FakeDbDriver implements Driver {
 		seq = 0;
 		LOG.clear();
 		logging = true;
-		add("jw_terminal", "terminal_id", "T1", "serial", "S1", "fran_id", "F1");
+		add("jw_terminal", "terminal_id", "T1", "serial", "S1", "fran_id", "F1", "USE_YN", "Y");
 		add("jw_franchise", "fran_id", "F1", "fran_name", "홍대점");
 		add("cybermoney", "cardNumber", "C1", "cyberMoney", "1000", "fran_id", "F1");
 		add("cybermoney", "cardNumber", "C2", "cyberMoney", "100", "fran_id", "F1");

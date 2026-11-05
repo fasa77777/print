@@ -90,6 +90,10 @@ public class PostJetworkController {
     	case REGISTERED:
     		pr.setResult("OK");
     		break;
+    	case NOT_IN_USE:
+    		// 사용하지 않는 단말기 (jw_terminal.USE_YN 이 Y 가 아님, 로그는 TerminalInfoSQL 에서)
+    		pr.setResult("FALSE");
+    		break;
     	case EXPIRED:
     		// 사용 기간(jw_terminal.expireDt)이 지난 단말기 (로그는 TerminalInfoSQL 에서)
     		pr.setResult("FALSE");

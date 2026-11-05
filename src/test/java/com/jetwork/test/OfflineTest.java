@@ -112,7 +112,7 @@ public class OfflineTest {
 		eq("등록 단말기 → OK", r, "result", "OK");
 		Map<String, String> t = FakeDbDriver.find("jw_terminal", "terminal_id", "T1");
 		check("등록 확인 성공 → license_dt 에 현재 시각", "<now>".equals(t.get("license_dt")));
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "T3", "serial", "S3", "fran_id", "F1");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "T3", "serial", "S3", "fran_id", "F1", "USE_YN", "Y");
 		eq("T3 시리얼 틀림 → FALSE", post("/postTerminal", "terminalID", "T3", "serial", "WRONG"), "result", "FALSE");
 		check("등록 확인 실패 → license_dt 그대로 (비어 있음)", FakeDbDriver.find("jw_terminal", "terminal_id", "T3").get("license_dt") == null);
 		// 사용 기간 (expireDt): 오늘이 expireDt 보다 이후 날짜면 FALSE, 당일까지는 OK, 비었으면 제한 없음
@@ -122,17 +122,29 @@ public class OfflineTest {
 		String yesterday = ymd.format(new java.util.Date(System.currentTimeMillis() - day));
 		String todayStr = ymd.format(new java.util.Date());
 		String tomorrow = ymd.format(new java.util.Date(System.currentTimeMillis() + day));
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E1", "serial", "SE1", "fran_id", "F1", "expireDt", yesterday);
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E2", "serial", "SE2", "fran_id", "F1", "expireDt", todayStr);
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E3", "serial", "SE3", "fran_id", "F1", "expireDt", tomorrow);
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E4", "serial", "SE4", "fran_id", "F1", "expireDt", "2020-01-01 00:00:00.0");
-		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E5", "serial", "SE5", "fran_id", "F1", "expireDt", "");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E1", "serial", "SE1", "fran_id", "F1", "expireDt", yesterday, "USE_YN", "Y");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E2", "serial", "SE2", "fran_id", "F1", "expireDt", todayStr, "USE_YN", "Y");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E3", "serial", "SE3", "fran_id", "F1", "expireDt", tomorrow, "USE_YN", "Y");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E4", "serial", "SE4", "fran_id", "F1", "expireDt", "2020-01-01 00:00:00.0", "USE_YN", "Y");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "E5", "serial", "SE5", "fran_id", "F1", "expireDt", "", "USE_YN", "Y");
 		eq("expireDt 어제 → FALSE", post("/postTerminal", "terminalID", "E1", "serial", "SE1"), "result", "FALSE");
 		check("만료 단말기는 license_dt 기록 안 함", FakeDbDriver.find("jw_terminal", "terminal_id", "E1").get("license_dt") == null);
 		eq("expireDt 오늘 → OK (당일까지 사용 가능)", post("/postTerminal", "terminalID", "E2", "serial", "SE2"), "result", "OK");
 		eq("expireDt 내일 → OK", post("/postTerminal", "terminalID", "E3", "serial", "SE3"), "result", "OK");
 		eq("expireDt datetime 형식 2020-01-01 → FALSE", post("/postTerminal", "terminalID", "E4", "serial", "SE4"), "result", "FALSE");
 		eq("expireDt 빈 값 → OK (기간 제한 없음)", post("/postTerminal", "terminalID", "E5", "serial", "SE5"), "result", "OK");
+		// 사용 여부 (USE_YN): Y 만 OK, 그 밖의 값(N, 빈 값, NULL)은 FALSE
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "U1", "serial", "SU1", "fran_id", "F1", "USE_YN", "N");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "U2", "serial", "SU2", "fran_id", "F1");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "U3", "serial", "SU3", "fran_id", "F1", "USE_YN", "");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "U4", "serial", "SU4", "fran_id", "F1", "USE_YN", "Y ");
+		FakeDbDriver.addRow("jw_terminal", "terminal_id", "U5", "serial", "SU5", "fran_id", "F1", "USE_YN", "N", "expireDt", tomorrow);
+		eq("USE_YN=N → FALSE", post("/postTerminal", "terminalID", "U1", "serial", "SU1"), "result", "FALSE");
+		check("USE_YN=N 이면 license_dt 기록 안 함", FakeDbDriver.find("jw_terminal", "terminal_id", "U1").get("license_dt") == null);
+		eq("USE_YN NULL → FALSE", post("/postTerminal", "terminalID", "U2", "serial", "SU2"), "result", "FALSE");
+		eq("USE_YN 빈 값 → FALSE", post("/postTerminal", "terminalID", "U3", "serial", "SU3"), "result", "FALSE");
+		eq("USE_YN='Y ' (공백 붙음) → OK", post("/postTerminal", "terminalID", "U4", "serial", "SU4"), "result", "OK");
+		eq("USE_YN=N 이면 기간이 남아도 FALSE", post("/postTerminal", "terminalID", "U5", "serial", "SU5"), "result", "FALSE");
 		check("버전 갱신 (agent_version=A1, terminalVersion=TV1)", "A1".equals(t.get("agent_version")) && "TV1".equals(t.get("terminalVersion")));
 		eq("시리얼 틀림 → FALSE", post("/postTerminal", "terminalID", "T1", "serial", "XX"), "result", "FALSE");
 		r = post("/printnuri/pricepolicy", "terminalID", "T1", "agentVersion", "A2", "version", "V2");
